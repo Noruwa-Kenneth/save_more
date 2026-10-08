@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'features/splash/splash_screen.dart';
 import 'theme.dart';
+
+// State management: we keep plain StatefulWidget + setState for now.
+// flutter_riverpod is already in pubspec.yaml and will be introduced
+// when we add shared/persisted state (e.g. selected rate plan, location).
 
 void main() {
   runApp(const MyApp());
