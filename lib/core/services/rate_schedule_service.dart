@@ -24,7 +24,6 @@ class RateScheduleService {
       return _getTimeOfUsePeriod(now);
     }
 
-    // Critical Peak is not implemented yet.
     return null;
   }
 
@@ -34,8 +33,7 @@ class RateScheduleService {
 
   RatePeriod _getTimeOfDayPeriod(DateTime now) {
     final isWeekend =
-        now.weekday == DateTime.saturday ||
-        now.weekday == DateTime.sunday;
+        now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
 
     final isWinter =
         now.month == DateTime.december ||
@@ -125,8 +123,7 @@ class RateScheduleService {
 
   RatePeriod _getTimeOfUsePeriod(DateTime now) {
     final isWeekend =
-        now.weekday == DateTime.saturday ||
-        now.weekday == DateTime.sunday;
+        now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
 
     final isWinter =
         now.month == DateTime.november ||
@@ -137,43 +134,35 @@ class RateScheduleService {
 
     final minutes = now.hour * 60 + now.minute;
 
-   // Summer period:
-// April 1 - October 31.
-//
-// Summer uses the reduced period all day,
-// including weekends.
-if (!isWinter) {
-  return const RatePeriod(
-    name: 'Reduced',
-    rateCentsPerKwh: 0,
-    startTime: '12:00 AM',
-    endTime: '11:59 PM',
-  );
-}
+    // Summer (April–October): Reduced all day, including weekends.
+    if (!isWinter) {
+      return const RatePeriod(
+        name: 'Reduced',
+        rateCentsPerKwh: 12.436,
+        startTime: '12:00 AM',
+        endTime: '11:59 PM',
+      );
+    }
 
-// Winter weekends are off-peak all day.
-if (isWeekend) {
-  return const RatePeriod(
-    name: 'Off-Peak',
-    rateCentsPerKwh: 0,
-    startTime: '12:00 AM',
-    endTime: '11:59 PM',
-  );
-}
+    // Winter weekends are off-peak all day.
+    if (isWeekend) {
+      return const RatePeriod(
+        name: 'Off-Peak',
+        rateCentsPerKwh: 12.436,
+        startTime: '12:00 AM',
+        endTime: '11:59 PM',
+      );
+    }
 
-    // ----------------------------------------------------------
     // Winter weekday:
-    //
-    // 7 AM  - 11 AM  → Peak
-    // 11 AM - 5 PM   → Off-Peak
-    // 5 PM  - 9 PM   → Peak
-    // 9 PM  - 7 AM   → Off-Peak
-    // ----------------------------------------------------------
-
+    // 7 AM–11 AM  → Peak
+    // 11 AM–5 PM  → Off-Peak
+    // 5 PM–9 PM   → Peak
+    // 9 PM–7 AM   → Off-Peak
     if (minutes >= 7 * 60 && minutes < 11 * 60) {
       return const RatePeriod(
         name: 'Peak',
-        rateCentsPerKwh: 0,
+        rateCentsPerKwh: 25.188,
         startTime: '7:00 AM',
         endTime: '11:00 AM',
       );
@@ -182,28 +171,37 @@ if (isWeekend) {
     if (minutes >= 17 * 60 && minutes < 21 * 60) {
       return const RatePeriod(
         name: 'Peak',
-        rateCentsPerKwh: 0,
+        rateCentsPerKwh: 25.188,
         startTime: '5:00 PM',
         endTime: '9:00 PM',
       );
     }
 
+    if (minutes >= 11 * 60 && minutes < 17 * 60) {
+      return const RatePeriod(
+        name: 'Off-Peak',
+        rateCentsPerKwh: 12.436,
+        startTime: '11:00 AM',
+        endTime: '5:00 PM',
+      );
+    }
+
+    // Overnight off-peak (9 PM – 7 AM)
     return const RatePeriod(
       name: 'Off-Peak',
-      rateCentsPerKwh: 0,
-      startTime: '11:00 AM',
-      endTime: '5:00 PM',
+      rateCentsPerKwh: 12.436,
+      startTime: '9:00 PM',
+      endTime: '7:00 AM',
     );
   }
 
-    RatePeriod? getBestTimeToUse({
+  RatePeriod? getBestTimeToUse({
     required ElectricityRate rate,
     DateTime? dateTime,
   }) {
     final now = dateTime ?? DateTime.now();
 
     // Standard Residential has a flat rate.
-    // There is no cheaper electricity period.
     if (rate.rateType == RateType.flat) {
       return null;
     }
@@ -221,8 +219,7 @@ if (isWeekend) {
     // Time-of-Use
     if (rate.rateType == RateType.timeOfUse) {
       final isWeekend =
-          now.weekday == DateTime.saturday ||
-          now.weekday == DateTime.sunday;
+          now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
 
       final isWinter =
           now.month == DateTime.november ||
@@ -235,7 +232,7 @@ if (isWeekend) {
       if (!isWinter) {
         return const RatePeriod(
           name: 'Reduced',
-          rateCentsPerKwh: 0,
+          rateCentsPerKwh: 12.436,
           startTime: '12:00 AM',
           endTime: '11:59 PM',
         );
@@ -245,22 +242,21 @@ if (isWeekend) {
       if (isWeekend) {
         return const RatePeriod(
           name: 'Off-Peak',
-          rateCentsPerKwh: 0,
+          rateCentsPerKwh: 12.436,
           startTime: '12:00 AM',
           endTime: '11:59 PM',
         );
       }
 
-      // Winter weekday: best period is 9 PM - 7 AM.
+      // Winter weekday: best period is 9 PM – 7 AM.
       return const RatePeriod(
         name: 'Off-Peak',
-        rateCentsPerKwh: 0,
+        rateCentsPerKwh: 12.436,
         startTime: '9:00 PM',
         endTime: '7:00 AM',
       );
     }
 
-    // Critical Peak not implemented yet.
     return null;
   }
 }

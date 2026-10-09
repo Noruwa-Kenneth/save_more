@@ -10,8 +10,7 @@ class RecommendationService {
     required String recommendedTimeRange,
   }) {
     final bool isLowDemand = currentDemandScore <= 40;
-    final bool isLowerCost = currentRate != null &&
-        currentRate.name.toLowerCase() == 'off-peak';
+    final bool isLowerCost = _isLowerCostPeriod(currentRate);
 
     if (isLowDemand && isLowerCost) {
       return EnergyRecommendation(
@@ -46,5 +45,12 @@ class RecommendationService {
       demandLabel: 'Higher demand',
       isLowerCost: false,
     );
+  }
+
+  /// Off-Peak and Reduced periods are treated as lower-cost windows.
+  bool _isLowerCostPeriod(RatePeriod? currentRate) {
+    if (currentRate == null) return false;
+    final name = currentRate.name.toLowerCase();
+    return name == 'off-peak' || name == 'reduced';
   }
 }
