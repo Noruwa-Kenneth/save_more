@@ -21,6 +21,17 @@ class HomeScreen extends ConsumerWidget {
     return 'Good Evening';
   }
 
+  void _openPeakForecast(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PeakForecastPage(
+          onBack: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardAsync = ref.watch(homeDashboardProvider);
@@ -151,7 +162,10 @@ class HomeScreen extends ConsumerWidget {
                 message: error.toString(),
                 onRetry: () => ref.invalidate(homeDashboardProvider),
               ),
-              data: (data) => _HomeSuccessBody(data: data),
+              data: (data) => _HomeSuccessBody(
+                data: data,
+                onOpenPeakForecast: () => _openPeakForecast(context),
+              ),
             ),
           ),
         ],
@@ -236,8 +250,12 @@ class _HomeErrorBody extends StatelessWidget {
 
 class _HomeSuccessBody extends StatelessWidget {
   final HomeDashboardData data;
+  final VoidCallback onOpenPeakForecast;
 
-  const _HomeSuccessBody({required this.data});
+  const _HomeSuccessBody({
+    required this.data,
+    required this.onOpenPeakForecast,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -265,16 +283,7 @@ class _HomeSuccessBody extends StatelessWidget {
                 percentage: prediction.score / 100,
                 statusText: prediction.statusText,
                 labelText: 'Grid Demand',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PeakForecastPage(
-                        onBack: () => Navigator.pop(context),
-                      ),
-                    ),
-                  );
-                },
+                onTap: onOpenPeakForecast,
               ),
             ),
             const SizedBox(height: 16),
@@ -282,6 +291,7 @@ class _HomeSuccessBody extends StatelessWidget {
               day: "Today's Outlook",
               timeRange: prediction.timeRange,
               demandLevel: prediction.demandText,
+              onTap: onOpenPeakForecast,
             ),
             const SizedBox(height: 16),
             GridStatusCard(
