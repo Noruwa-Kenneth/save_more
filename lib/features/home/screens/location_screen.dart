@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:save_more/core/models/app_location.dart';
+import 'package:save_more/core/providers/location_provider.dart';
 import '/theme.dart';
 
-class LocationScreen extends StatefulWidget {
+class LocationScreen extends ConsumerWidget {
   final VoidCallback onBack;
 
   const LocationScreen({
@@ -10,32 +14,14 @@ class LocationScreen extends StatefulWidget {
   });
 
   @override
-  State<LocationScreen> createState() => _LocationScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(locationProvider);
 
-class _LocationScreenState extends State<LocationScreen> {
-  String _selectedLocation = 'Halifax, Nova Scotia';
-
-  final List<String> _locations = [
-    'Halifax, Nova Scotia',
-    'Dartmouth, Nova Scotia',
-    'Bedford, Nova Scotia',
-    'Sydney, Nova Scotia',
-    'Truro, Nova Scotia',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryNavy,
-
       body: SafeArea(
         child: Column(
           children: [
-            // ============================================================
-            // HEADER
-            // ============================================================
-
             Container(
               height: 65,
               width: double.infinity,
@@ -43,11 +29,10 @@ class _LocationScreenState extends State<LocationScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Back button
                   Positioned(
                     left: 8,
                     child: IconButton(
-                      onPressed: widget.onBack,
+                      onPressed: onBack,
                       icon: const Icon(
                         Icons.chevron_left,
                         color: Colors.white,
@@ -55,8 +40,6 @@ class _LocationScreenState extends State<LocationScreen> {
                       ),
                     ),
                   ),
-
-                  // Title
                   const Text(
                     'Location',
                     style: TextStyle(
@@ -68,27 +51,13 @@ class _LocationScreenState extends State<LocationScreen> {
                 ],
               ),
             ),
-
-            // ============================================================
-            // CONTENT
-            // ============================================================
-
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  24,
-                  20,
-                  30,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 30),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ======================================================
-                    // LOCATION ICON
-                    // ======================================================
-
                     Center(
                       child: Container(
                         width: 82,
@@ -107,13 +76,7 @@ class _LocationScreenState extends State<LocationScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 18),
-
-                    // ======================================================
-                    // TITLE
-                    // ======================================================
-
                     const Center(
                       child: Text(
                         'Your Location',
@@ -124,12 +87,10 @@ class _LocationScreenState extends State<LocationScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
                     Center(
                       child: Text(
-                        'Your location helps PeakSaver NS provide\\n'
+                        'Your location helps PeakSaver NS provide\n'
                         'more accurate energy recommendations.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -139,17 +100,9 @@ class _LocationScreenState extends State<LocationScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 30),
-
-                    // ======================================================
-                    // CURRENT LOCATION
-                    // ======================================================
-
                     _sectionTitle('CURRENT LOCATION'),
-
                     const SizedBox(height: 10),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(18),
@@ -166,8 +119,7 @@ class _LocationScreenState extends State<LocationScreen> {
                             width: 46,
                             height: 46,
                             decoration: BoxDecoration(
-                              color: AppColors.lowDemand
-                                  .withValues(alpha: 0.10),
+                              color: AppColors.lowDemand.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(13),
                             ),
                             child: const Icon(
@@ -176,9 +128,7 @@ class _LocationScreenState extends State<LocationScreen> {
                               size: 23,
                             ),
                           ),
-
                           const SizedBox(width: 14),
-
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,11 +140,9 @@ class _LocationScreenState extends State<LocationScreen> {
                                     fontSize: 11,
                                   ),
                                 ),
-
                                 const SizedBox(height: 4),
-
                                 Text(
-                                  _selectedLocation,
+                                  selected.name,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,
@@ -204,7 +152,6 @@ class _LocationScreenState extends State<LocationScreen> {
                               ],
                             ),
                           ),
-
                           const Icon(
                             Icons.check_circle,
                             color: AppColors.lowDemand,
@@ -213,17 +160,9 @@ class _LocationScreenState extends State<LocationScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 28),
-
-                    // ======================================================
-                    // CHANGE LOCATION
-                    // ======================================================
-
                     _sectionTitle('CHANGE LOCATION'),
-
                     const SizedBox(height: 10),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -238,51 +177,37 @@ class _LocationScreenState extends State<LocationScreen> {
                         ),
                       ),
                       child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedLocation,
+                        child: DropdownButton<AppLocation>(
+                          value: selected,
                           isExpanded: true,
-
                           dropdownColor: AppColors.secondaryNavy,
-
                           icon: const Icon(
                             Icons.keyboard_arrow_down,
                             color: Colors.white70,
                           ),
-
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
-
-                          items: _locations.map((location) {
-                            return DropdownMenuItem<String>(
+                          items: AppLocation.all.map((location) {
+                            return DropdownMenuItem<AppLocation>(
                               value: location,
-                              child: Text(location),
+                              child: Text(location.name),
                             );
                           }).toList(),
-
                           onChanged: (value) {
                             if (value == null) return;
-
-                            setState(() {
-                              _selectedLocation = value;
-                            });
+                            ref
+                                .read(locationProvider.notifier)
+                                .setLocation(value);
                           },
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 28),
-
-                    // ======================================================
-                    // LOCATION SERVICES
-                    // ======================================================
-
                     _sectionTitle('LOCATION SERVICES'),
-
                     const SizedBox(height: 10),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(18),
@@ -309,9 +234,7 @@ class _LocationScreenState extends State<LocationScreen> {
                               size: 21,
                             ),
                           ),
-
                           const SizedBox(width: 14),
-
                           const Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,9 +247,7 @@ class _LocationScreenState extends State<LocationScreen> {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-
                                 SizedBox(height: 5),
-
                                 Text(
                                   'Allow PeakSaver NS to use your device location '
                                   'for more accurate energy information.',
@@ -339,24 +260,17 @@ class _LocationScreenState extends State<LocationScreen> {
                               ],
                             ),
                           ),
-
                           Switch(
                             value: false,
                             activeThumbColor: AppColors.lowDemand,
                             onChanged: (value) {
-                              // Location permission will be connected here.
+                              // Device GPS can be connected in a later step.
                             },
                           ),
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 30),
-
-                    // ======================================================
-                    // INFORMATION
-                    // ======================================================
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
@@ -375,13 +289,11 @@ class _LocationScreenState extends State<LocationScreen> {
                             color: Colors.white54,
                             size: 20,
                           ),
-
                           const SizedBox(width: 12),
-
                           Expanded(
                             child: Text(
-                              'Your location is used to provide local electricity '
-                              'demand information and energy recommendations.',
+                              'Changing location updates weather and demand '
+                              'recommendations on the Home screen.',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.50),
                                 fontSize: 11,
@@ -390,23 +302,6 @@ class _LocationScreenState extends State<LocationScreen> {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    // ======================================================
-                    // APP NAME
-                    // ======================================================
-
-                    Center(
-                      child: Text(
-                        'PeakSaver NS',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.30),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
                       ),
                     ),
                   ],
@@ -418,10 +313,6 @@ class _LocationScreenState extends State<LocationScreen> {
       ),
     );
   }
-
-  // ==============================================================
-  // SECTION TITLE
-  // ==============================================================
 
   Widget _sectionTitle(String title) {
     return Padding(

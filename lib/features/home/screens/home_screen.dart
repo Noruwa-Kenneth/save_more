@@ -1,130 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:save_more/core/models/app_location.dart';
+import 'package:save_more/core/providers/home_dashboard_provider.dart';
+import 'package:save_more/core/providers/location_provider.dart';
+import 'package:save_more/theme.dart';
 
 import '../widgets/demand_meter.dart';
 import '../widgets/grid_status_card.dart';
 import '../widgets/prediction_card.dart';
-
-import 'package:save_more/theme.dart';
-
 import 'peak_forecast.dart';
 
-import 'package:save_more/core/data/rate_database.dart';
-import 'package:save_more/core/models/energy_recommendation.dart';
-import 'package:save_more/core/models/peak_prediction.dart';
-import 'package:save_more/core/models/user_rate_plan.dart';
-import 'package:save_more/core/services/peak_prediction_service.dart';
-import 'package:save_more/core/services/recommendation_service.dart';
-import 'package:save_more/core/services/rate_schedule_service.dart';
-import 'package:save_more/core/services/user_rate_plan_service.dart';
-import 'package:save_more/core/services/weather_service.dart';
-
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  PeakPrediction? _prediction;
-  EnergyRecommendation? _recommendation;
-
-  final WeatherService _weatherService = WeatherService();
-  final PeakPredictionService _predictionService = PeakPredictionService();
-
-  final RecommendationService _recommendationService =
-      const RecommendationService();
-
-  final RateScheduleService _rateScheduleService = const RateScheduleService();
-
-  final UserRatePlanService _userRatePlanService = UserRatePlanService.instance;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _loadWeather();
-  }
-
-  Future<void> _loadWeather() async {
-    try {
-      // 1. Get current weather
-      final weather = await _weatherService.getCurrentWeather(
-        latitude: 44.6488,
-        longitude: -63.5752,
-      );
-
-      // 2. Calculate demand prediction
-      final prediction = _predictionService.calculate(weather: weather);
-
-      // 3. Get the user's selected electricity plan
-      final UserRatePlan selectedPlan = _userRatePlanService.selectedPlan;
-
-      // 4. Get the corresponding rate
-      final electricityRate = RateDatabase.getRateForPlan(selectedPlan);
-
-      // 5. Get the rate that applies right now
-      final currentRate = _rateScheduleService.getCurrentPeriod(
-        rate: electricityRate,
-        dateTime: DateTime.now(),
-      );
-
-      // 5a. Get the best time to use appliances based on the current rate and prediction
-      final bestTime = _rateScheduleService.getBestTimeToUse(
-        rate: electricityRate,
-        dateTime: DateTime.now(),
-      );
-      // 6. Create the recommendation
-      final recommendation = _recommendationService.createRecommendation(
-        currentRate: currentRate,
-        currentDemandScore: prediction.score.toDouble(),
-        recommendedTimeRange:
-            bestTime?.startTime != null && bestTime?.endTime != null
-            ? '${bestTime!.startTime} – ${bestTime.endTime}'
-            : prediction.recommendedTimeRange,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _prediction = prediction;
-        _recommendation = recommendation;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _prediction = null;
-        _recommendation = null;
-      });
-    }
-  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
-
-    if (hour < 12) {
-      return "Good Morning";
-    } else if (hour < 17) {
-      return "Good Afternoon";
-    } else {
-      return "Good Evening";
-    }
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dashboardAsync = ref.watch(homeDashboardProvider);
+    final location = ref.watch(locationProvider);
+
     return Scaffold(
       backgroundColor: AppColors.primaryNavy,
-
       appBar: AppBar(
         backgroundColor: AppColors.primaryNavy,
         elevation: 0,
         titleSpacing: 0,
-
         title: Stack(
           alignment: Alignment.center,
           children: [
-            /// Center Greeting
             Padding(
               padding: const EdgeInsets.only(left: 80),
               child: Column(
@@ -132,87 +42,67 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "${_getGreeting()} 👋",
+                    '${_getGreeting()} 👋',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const Text(
-                    "Welcome to PeakSaver NS",
+                    'Welcome to PeakSaver NS',
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
               ),
             ),
-
-            /// Location - Left
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: const EdgeInsets.only(left: 12),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: 'Halifax, NS',
+                  child: DropdownButton<AppLocation>(
+                    value: location,
                     isDense: true,
-
                     icon: const Icon(
                       Icons.keyboard_arrow_down,
                       color: Colors.white,
                       size: 18,
                     ),
-
                     dropdownColor: Colors.white,
-
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primaryNavy,
                     ),
-
-                    selectedItemBuilder: (BuildContext context) {
-                      return const [
-                        Text(
-                          'Halifax',
-                          style: TextStyle(
+                    selectedItemBuilder: (context) {
+                      return AppLocation.all.map((loc) {
+                        return Text(
+                          loc.shortName,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
-                        ),
-                        Text(
-                          'Dartmouth',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ];
+                        );
+                      }).toList();
                     },
-
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Halifax, NS',
-                        child: Text('Halifax'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Dartmouth, NS',
-                        child: Text('Dartmouth'),
-                      ),
-                    ],
-
-                    onChanged: (_) {},
+                    items: AppLocation.all.map((loc) {
+                      return DropdownMenuItem(
+                        value: loc,
+                        child: Text(loc.shortName),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      ref.read(locationProvider.notifier).setLocation(value);
+                    },
                   ),
                 ),
               ),
             ),
           ],
         ),
-
-        /// Notification - Right
         actions: [
           Stack(
             children: [
@@ -224,7 +114,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 onPressed: () {},
               ),
-
               Positioned(
                 right: 10,
                 top: 10,
@@ -241,17 +130,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
       body: Stack(
         children: [
-          // Deep Navy Background
           Container(
             width: double.infinity,
             height: double.infinity,
             color: AppColors.primaryNavy,
           ),
-
-          // White Section
           Positioned(
             top: 400,
             left: 0,
@@ -259,101 +144,156 @@ class _HomeScreenState extends State<HomeScreen> {
             bottom: 0,
             child: Container(color: const Color.fromARGB(255, 235, 231, 231)),
           ),
-
-          // Scrollable Dashboard
           SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 20,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Current Electricity\nPeak Status',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        height: 1.2,
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    /// DEMAND METER
-                    Center(
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: _prediction == null
-                            ? const SizedBox(
-                                height: 220,
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              )
-                            : DemandMeter(
-                                percentage: _prediction!.score / 100,
-                                statusText: _prediction!.statusText,
-                                labelText: 'Grid Demand',
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => PeakForecastPage(
-                                        onBack: () {
-                                          Navigator.pop(context);
-                                        },
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ),
-
-                    /// TODAY'S OUTLOOK
-                    const SizedBox(height: 16),
-
-                    _prediction == null
-                        ? const SizedBox.shrink()
-                        : PredictionCard(
-                            day: "Today's Outlook",
-                            timeRange: _prediction!.timeRange,
-                            demandLevel: _prediction!.demandText,
-                          ),
-
-                    /// BEST TIME TO USE APPLIANCES
-                    const SizedBox(height: 16),
-
-                    _prediction == null || _recommendation == null
-                        ? const SizedBox.shrink()
-                        : GridStatusCard(
-                            title: "Best Time to Use Appliances",
-
-                            timeRange: _recommendation!.timeRange,
-
-                            subtitle: _recommendation!.subtitle,
-
-                            demandColor: _recommendation!.isLowerCost
-                                ? AppColors.lowDemand
-                                : AppColors.moderateDemand,
-                          ),
-                  ],
-                ),
+            child: dashboardAsync.when(
+              loading: () => const _HomeLoadingBody(),
+              error: (error, _) => _HomeErrorBody(
+                message: error.toString(),
+                onRetry: () => ref.invalidate(homeDashboardProvider),
               ),
+              data: (data) => _HomeSuccessBody(data: data),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HomeLoadingBody extends StatelessWidget {
+  const _HomeLoadingBody();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: Colors.white),
+          SizedBox(height: 16),
+          Text(
+            'Loading energy data…',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeErrorBody extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _HomeErrorBody({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, color: Colors.white70, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'Could not load energy data',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white60, fontSize: 12),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primaryNavy,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeSuccessBody extends StatelessWidget {
+  final HomeDashboardData data;
+
+  const _HomeSuccessBody({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final prediction = data.prediction;
+    final recommendation = data.recommendation;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Current Electricity\nPeak Status',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: DemandMeter(
+                percentage: prediction.score / 100,
+                statusText: prediction.statusText,
+                labelText: 'Grid Demand',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PeakForecastPage(
+                        onBack: () => Navigator.pop(context),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            PredictionCard(
+              day: "Today's Outlook",
+              timeRange: prediction.timeRange,
+              demandLevel: prediction.demandText,
+            ),
+            const SizedBox(height: 16),
+            GridStatusCard(
+              title: 'Best Time to Use Appliances',
+              timeRange: recommendation.timeRange,
+              subtitle: recommendation.subtitle,
+              demandColor: recommendation.isLowerCost
+                  ? AppColors.lowDemand
+                  : AppColors.moderateDemand,
+            ),
+          ],
+        ),
       ),
     );
   }

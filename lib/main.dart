@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/splash/splash_screen.dart';
 import 'theme.dart';
 
-// State management: we keep plain StatefulWidget + setState for now.
-// flutter_riverpod is already in pubspec.yaml and will be introduced
-// when we add shared/persisted state (e.g. selected rate plan, location).
-
 void main() {
-  runApp(const MyApp());
+  // ProviderScope makes all Riverpod providers available to the widget tree.
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {

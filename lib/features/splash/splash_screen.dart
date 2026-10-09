@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:save_more/core/services/user_rate_plan_service.dart';
+import 'package:save_more/core/providers/location_provider.dart';
+import 'package:save_more/core/providers/rate_plan_provider.dart';
 
 import '../onboarding/onboarding_screen.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -20,10 +22,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   /// Loads saved preferences, keeps the splash visible briefly, then navigates.
   Future<void> _initializeAndNavigate() async {
-    // Run real startup work and a short delay in parallel so the logo
-    // is still visible for at least ~2 seconds even if load is fast.
     await Future.wait([
-      UserRatePlanService.instance.loadFromStorage(),
+      ref.read(ratePlanProvider.notifier).load(),
+      ref.read(locationProvider.notifier).load(),
       Future<void>.delayed(const Duration(seconds: 2)),
     ]);
 
