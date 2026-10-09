@@ -25,15 +25,16 @@ class _ElectricityPlanScreenState
   UserRatePlan get _selectedPlan =>
       _planService.selectedPlan;
 
-  void _selectPlan(UserRatePlan plan) {
+  Future<void> _selectPlan(UserRatePlan plan) async {
     if (plan == UserRatePlan.timeOfUse ||
         plan == UserRatePlan.criticalPeak) {
       return;
     }
 
-    setState(() {
-      _planService.setPlan(plan);
-    });
+    await _planService.setPlan(plan);
+
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override

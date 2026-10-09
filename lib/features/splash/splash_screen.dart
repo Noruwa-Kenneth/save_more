@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:save_more/core/services/user_rate_plan_service.dart';
+
 import '../onboarding/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -16,15 +18,14 @@ class _SplashScreenState extends State<SplashScreen> {
     _initializeAndNavigate();
   }
 
-  /// Keeps the splash visible briefly, then navigates.
-  /// Later we can await real startup work here (e.g. loading saved
-  /// preferences or the selected rate plan) before navigating.
+  /// Loads saved preferences, keeps the splash visible briefly, then navigates.
   Future<void> _initializeAndNavigate() async {
-    // Minimum time so the logo is visible (not a long fixed wait).
-    await Future<void>.delayed(const Duration(seconds: 2));
-
-    // Placeholder for future initialization, for example:
-    // await UserRatePlanService.instance.loadFromStorage();
+    // Run real startup work and a short delay in parallel so the logo
+    // is still visible for at least ~2 seconds even if load is fast.
+    await Future.wait([
+      UserRatePlanService.instance.loadFromStorage(),
+      Future<void>.delayed(const Duration(seconds: 2)),
+    ]);
 
     if (!mounted) return;
 
