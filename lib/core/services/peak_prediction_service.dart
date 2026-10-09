@@ -36,7 +36,6 @@ class PeakPredictionService {
         ? 'Normal electricity demand conditions.'
         : reasons.join(', ');
 
-    // Default evening peak window used on the Home summary card.
     return PeakPrediction(
       score: score,
       level: level,
@@ -79,7 +78,7 @@ class PeakPredictionService {
     final points = <DemandForecastPoint>[];
 
     if (range == ForecastRange.next7Days) {
-      // One point per day: max score that day.
+      // One point per day: maximum demand score that day.
       final byDay = <DateTime, List<WeatherData>>{};
       for (final w in filtered) {
         final dayKey = DateTime(w.time.year, w.time.month, w.time.day);
@@ -90,13 +89,9 @@ class PeakPredictionService {
       for (final day in sortedDays) {
         final samples = byDay[day]!;
         var maxScore = 0;
-        late WeatherData maxWeather;
         for (final w in samples) {
           final s = _scoreFor(weather: w, dateTime: w.time);
-          if (s >= maxScore) {
-            maxScore = s;
-            maxWeather = w;
-          }
+          if (s > maxScore) maxScore = s;
         }
         points.add(
           DemandForecastPoint(
@@ -105,11 +100,8 @@ class PeakPredictionService {
             level: _levelFor(maxScore),
           ),
         );
-        // keep analyzer happy if loop empty (shouldn't happen)
-        maxWeather;
       }
     } else {
-      // Hourly points for today / tomorrow.
       for (final w in filtered) {
         final score = _scoreFor(weather: w, dateTime: w.time);
         points.add(
@@ -122,7 +114,7 @@ class PeakPredictionService {
       }
     }
 
-    final peakWindow = _findPeakWindow(points);
+    final peakWindow = _findPeakWindow(points, isDaily: range == ForecastRange.next7Days);
 
     return DemandForecast(
       range: range,
@@ -176,7 +168,10 @@ class PeakPredictionService {
   }
 
   /// Returns (start, end, peakScore) for the highest-demand window.
-  (DateTime, DateTime, int) _findPeakWindow(List<DemandForecastPoint> points) {
+  (DateTime, DateTime, int) _findPeakWindow(
+    List<DemandForecastPoint> points, {
+    required bool isDaily,
+  }) {
     if (points.isEmpty) {
       final now = DateTime.now();
       return (now, now.add(const Duration(hours: 1)), 20);
@@ -209,15 +204,14 @@ class PeakPredictionService {
 
     if (bestSum >= 0) {
       final start = points[bestStart].time;
-      final endPoint = points[bestEnd];
-      final end = endPoint.time.add(
-        points.length > 24 ? const Duration(hours: 23) : const Duration(hours: 1),
-      );
+      final end = isDaily
+          ? points[bestEnd].time.add(const Duration(hours: 23))
+          : points[bestEnd].time.add(const Duration(hours: 1));
       final avg = (bestSum / (bestEnd - bestStart + 1)).round();
       return (start, end, avg);
     }
 
-    // Fallback: single highest score hour/day.
+    // Fallback: single highest score point.
     var maxIndex = 0;
     for (var k = 1; k < points.length; k++) {
       if (points[k].score > points[maxIndex].score) {
@@ -227,9 +221,7 @@ class PeakPredictionService {
     final peak = points[maxIndex];
     return (
       peak.time,
-      peak.time.add(
-        points.length > 24 ? const Duration(hours: 23) : const Duration(hours: 1),
-      ),
+      peak.time.add(isDaily ? const Duration(hours: 23) : const Duration(hours: 1)),
       peak.score,
     );
   }

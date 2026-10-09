@@ -1,31 +1,35 @@
-import 'package:flutter/material.dart';
-import '/theme.dart';
-import '../widgets/demand_chart.dart';
 import 'dart:math' as math;
 
-class PeakForecastPage extends StatefulWidget {
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:save_more/core/models/demand_forecast.dart';
+import 'package:save_more/core/models/peak_prediction.dart';
+import 'package:save_more/core/providers/peak_forecast_provider.dart';
+import '/theme.dart';
+import '../widgets/demand_chart.dart';
+
+class PeakForecastPage extends ConsumerStatefulWidget {
   final VoidCallback onBack;
 
   const PeakForecastPage({super.key, required this.onBack});
 
   @override
-  State<PeakForecastPage> createState() => _PeakForecastPageState();
+  ConsumerState<PeakForecastPage> createState() => _PeakForecastPageState();
 }
 
-class _PeakForecastPageState extends State<PeakForecastPage> {
-  int _selectedTab = 0;
+class _PeakForecastPageState extends ConsumerState<PeakForecastPage> {
+  ForecastRange _selectedRange = ForecastRange.today;
 
   @override
   Widget build(BuildContext context) {
+    final forecastAsync = ref.watch(peakForecastProvider(_selectedRange));
+
     return Scaffold(
       backgroundColor: AppColors.primaryNavy,
-
       body: SafeArea(
         child: Column(
           children: [
-            // ============================================================
-            // NAVY HEADER
-            // ============================================================
             Container(
               height: 60,
               width: double.infinity,
@@ -33,7 +37,6 @@ class _PeakForecastPageState extends State<PeakForecastPage> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Back button
                   Positioned(
                     left: 8,
                     child: IconButton(
@@ -45,8 +48,6 @@ class _PeakForecastPageState extends State<PeakForecastPage> {
                       ),
                     ),
                   ),
-
-                  // Title
                   const Text(
                     'Peak Forecast',
                     style: TextStyle(
@@ -58,182 +59,72 @@ class _PeakForecastPageState extends State<PeakForecastPage> {
                 ],
               ),
             ),
-
-            // ============================================================
-            // CONTENT
-            // ============================================================
             Expanded(
               child: Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 255, 255, 255),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
                   ),
-                ),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ====================================================
-                      // DAY SELECTOR
-                      // ====================================================
-                      Container(
-                        height: 44,
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8E8EA),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            _buildTab(title: 'Today', index: 0),
-                            _buildTab(title: 'Tomorrow', index: 1),
-                            _buildTab(title: '7 Days', index: 2),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // ====================================================
-                      // DATE
-                      // ====================================================
-                      Text(
-                        _getDateText(),
-                        style: const TextStyle(
-                          color: AppColors.primaryNavy,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      // ====================================================
-                      // DEMAND CHART WIDGET
-                      // ====================================================
-                      const SizedBox(
-                        width: double.infinity,
-                        height: 190,
-                        child: DemandForecastChart(),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      // ====================================================
-                      // LEGEND
-                      // ====================================================
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLegendItem(
-                            color: AppColors.lowDemand,
-                            text: 'Low (0–40%)',
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 44,
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8E8EA),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-
-                          const SizedBox(height: 10),
-
-                          _buildLegendItem(
-                            color: AppColors.moderateDemand,
-                            text: 'Moderate (40–70%)',
+                          child: Row(
+                            children: [
+                              _buildTab(
+                                title: 'Today',
+                                range: ForecastRange.today,
+                              ),
+                              _buildTab(
+                                title: 'Tomorrow',
+                                range: ForecastRange.tomorrow,
+                              ),
+                              _buildTab(
+                                title: '7 Days',
+                                range: ForecastRange.next7Days,
+                              ),
+                            ],
                           ),
-
-                          const SizedBox(height: 10),
-
-                          _buildLegendItem(
-                            color: AppColors.highDemand,
-                            text: 'High (70–100%)',
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // ====================================================
-                      // PEAK PERIOD CARD
-                      // ====================================================
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xFFE7E7E7),
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // LEFT CONTENT
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Peak period',
-                                    style: TextStyle(
-                                      color: AppColors.primaryNavy,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 6),
-
-                                  const Text(
-                                    '4:00 PM – 8:00 PM',
-                                    style: TextStyle(
-                                      color: AppColors.highDemand,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 14),
-
-                                  const Text(
-                                    'Avoid heavy appliance use\n'
-                                    'during this time.',
-                                    style: TextStyle(
-                                      color: Color(0xFF222222),
-                                      fontSize: 13,
-                                      height: 1.45,
-                                    ),
-                                  ),
-                                ],
+                        const SizedBox(height: 28),
+                        forecastAsync.when(
+                          loading: () => const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 80),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primaryNavy,
                               ),
                             ),
-
-                            // CLOCK
-                            Padding(
-                              padding: const EdgeInsets.only(top: 16, right: 2),
-                              child: CustomPaint(
-                                size: const Size(26, 26),
-                                painter: ClockPainter(),
-                              ),
+                          ),
+                          error: (error, _) => _ErrorState(
+                            message: error.toString(),
+                            onRetry: () => ref.invalidate(
+                              peakForecastProvider(_selectedRange),
                             ),
-                          ],
+                          ),
+                          data: (forecast) => _ForecastContent(
+                            forecast: forecast,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
               ),
             ),
           ],
@@ -242,19 +133,13 @@ class _PeakForecastPageState extends State<PeakForecastPage> {
     );
   }
 
-  // ==============================================================
-  // TAB
-  // ==============================================================
-
-  Widget _buildTab({required String title, required int index}) {
-    final bool selected = _selectedTab == index;
+  Widget _buildTab({equired String title, required ForecastRange range}) {
+    final selected = _selectedRange == range;
 
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          setState(() {
-            _selectedTab = index;
-          });
+          setState(() => _selectedRange = range);
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -275,12 +160,132 @@ class _PeakForecastPageState extends State<PeakForecastPage> {
       ),
     );
   }
+}
 
-  // ==============================================================
-  // LEGEND
-  // ==============================================================
+class _ForecastContent extends StatelessWidget {
+  final DemandForecast forecast;
 
-  Widget _buildLegendItem({required Color color, required String text}) {
+  const _ForecastContent({required this.forecast});
+
+  @override
+  Widget build(BuildContext context) {
+    final peakColor = switch (forecast.peakLevel) {
+      DemandLevel.high => AppColors.highDemand,
+      DemandLevel.moderate => AppColors.moderateDemand,
+      DemandLevel.low => AppColors.lowDemand,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          forecast.dateLabel,
+          style: const TextStyle(
+            color: AppColors.primaryNavy,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 18),
+        SizedBox(
+          width: double.infinity,
+          height: 190,
+          child: DemandForecastChart(
+            points: forecast.points,
+            range: forecast.range,
+            peakMarkerTime: forecast.peakStart,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _legendItem(color: AppColors.lowDemand, text: 'Low (0–40%)'),
+            const SizedBox(height: 10),
+            _legendItem(
+              color: AppColors.moderateDemand,
+              text: 'Moderate (40–70%)',
+            ),
+            const SizedBox(height: 10),
+            _legendItem(color: AppColors.highDemand, text: 'High (70–100%)'),
+          ],
+        ),
+        const SizedBox(height: 28),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE7E7E7)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Peak period',
+                      style: TextStyle(
+                        color: AppColors.primaryNavy,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      forecast.peakTimeRange,
+                      style: TextStyle(
+                        color: peakColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Peak score ~${forecast.peakScore}%',
+                      style: const TextStyle(
+                        color: Color(0xFF666666),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      forecast.peakAdvice,
+                      style: const TextStyle(
+                        color: Color(0xFF222222),
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16, right: 2),
+                child: CustomPaint(
+                  size: const Size(26, 26),
+                  painter: ClockPainter(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _legendItem({required Color color, required String text}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -289,9 +294,7 @@ class _PeakForecastPageState extends State<PeakForecastPage> {
           height: 13,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-
         const SizedBox(width: 8),
-
         Text(
           text,
           style: const TextStyle(color: Color(0xFF222222), fontSize: 13),
@@ -299,55 +302,67 @@ class _PeakForecastPageState extends State<PeakForecastPage> {
       ],
     );
   }
-
-  // ==============================================================
-  // DATE
-  // ==============================================================
-
-  String _getDateText() {
-    switch (_selectedTab) {
-      case 0:
-        return 'June 6, 2025';
-
-      case 1:
-        return 'June 7, 2025';
-
-      case 2:
-        return 'June 6 – 13, 2025';
-
-      default:
-        return 'June 6, 2025';
-    }
-  }
 }
 
-// ============================================================================
-// CLOCK ICON
-// ============================================================================
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 12),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off_outlined, size: 40, color: Colors.grey),
+          const SizedBox(height: 12),
+          const Text(
+            'Could not load forecast',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primaryNavy,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Try again'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class ClockPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
+    final paint = Paint()
       ..color = const Color(0xFF333333)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.7;
 
-    final Offset center = Offset(size.width / 2, size.height / 2);
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 2;
 
-    final double radius = math.min(size.width, size.height) / 2 - 2;
-
-    // Outer circle
     canvas.drawCircle(center, radius, paint);
-
-    // Hour hand
-    canvas.drawLine(
-      center,
-      Offset(center.dx, center.dy - radius * 0.48),
-      paint,
-    );
-
-    // Minute hand
+    canvas.drawLine(center, Offset(center.dx, center.dy - radius * 0.48), paint);
     canvas.drawLine(
       center,
       Offset(center.dx + radius * 0.48, center.dy + radius * 0.18),
@@ -356,7 +371,5 @@ class ClockPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
