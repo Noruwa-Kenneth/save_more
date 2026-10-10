@@ -133,7 +133,7 @@ class _PeakForecastPageState extends ConsumerState<PeakForecastPage> {
     );
   }
 
-  Widget _buildTab() {
+  Widget _buildTab({required String title, required ForecastRange range}) {
     final selected = _selectedRange == range;
 
     return Expanded(
