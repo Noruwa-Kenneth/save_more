@@ -88,6 +88,7 @@ final homeDashboardProvider = FutureProvider<HomeDashboardData>((ref) async {
 
   final recommendation = recommendationService.createRecommendation(
     currentRate: currentRate,
+    recommendedRate: bestTime,
     currentDemandScore: prediction.score.toDouble(),
     recommendedTimeRange: recommendedTimeRange,
   );

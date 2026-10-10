@@ -6,9 +6,15 @@ void main() {
   const service = RecommendationService();
 
   group('Recommendation Service', () {
-    test('Low demand + Off-Peak should recommend lower demand and lower cost',
+    test('Low demand + cheaper recommendation reports lower demand and cost',
         () {
-      const rate = RatePeriod(
+      const currentRate = RatePeriod(
+        name: 'On-Peak',
+        rateCentsPerKwh: 25.188,
+        startTime: '4:00 PM',
+        endTime: '11:00 PM',
+      );
+      const recommendedRate = RatePeriod(
         name: 'Off-Peak',
         rateCentsPerKwh: 12.436,
         startTime: '11:00 PM',
@@ -16,7 +22,8 @@ void main() {
       );
 
       final result = service.createRecommendation(
-        currentRate: rate,
+        currentRate: currentRate,
+        recommendedRate: recommendedRate,
         currentDemandScore: 30,
         recommendedTimeRange: '9:00 PM – 7:00 AM',
       );
@@ -29,6 +36,7 @@ void main() {
     test('Low demand + flat rate should only say lower demand', () {
       final result = service.createRecommendation(
         currentRate: null,
+        recommendedRate: null,
         currentDemandScore: 30,
         recommendedTimeRange: '9:00 PM – 7:00 AM',
       );
@@ -38,8 +46,8 @@ void main() {
       expect(result.demandLabel, 'Low demand');
     });
 
-    test('High demand + peak rate should recommend shifting usage', () {
-      const rate = RatePeriod(
+    test('High demand + no rate reduction should recommend shifting usage', () {
+      const currentRate = RatePeriod(
         name: 'On-Peak',
         rateCentsPerKwh: 25.188,
         startTime: '4:00 PM',
@@ -47,7 +55,8 @@ void main() {
       );
 
       final result = service.createRecommendation(
-        currentRate: rate,
+        currentRate: currentRate,
+        recommendedRate: currentRate,
         currentDemandScore: 85,
         recommendedTimeRange: '9:00 PM – 7:00 AM',
       );
@@ -57,8 +66,14 @@ void main() {
       expect(result.demandLabel, 'Higher demand');
     });
 
-    test('Moderate demand + Off-Peak should recognize lower cost', () {
-      const rate = RatePeriod(
+    test('Moderate demand + cheaper recommendation recognizes lower cost', () {
+      const currentRate = RatePeriod(
+        name: 'On-Peak',
+        rateCentsPerKwh: 25.188,
+        startTime: '4:00 PM',
+        endTime: '11:00 PM',
+      );
+      const recommendedRate = RatePeriod(
         name: 'Off-Peak',
         rateCentsPerKwh: 12.436,
         startTime: '11:00 PM',
@@ -66,7 +81,8 @@ void main() {
       );
 
       final result = service.createRecommendation(
-        currentRate: rate,
+        currentRate: currentRate,
+        recommendedRate: recommendedRate,
         currentDemandScore: 60,
         recommendedTimeRange: '9:00 PM – 7:00 AM',
       );
@@ -79,6 +95,7 @@ void main() {
     test('Standard Residential should not claim lower electricity cost', () {
   final result = service.createRecommendation(
     currentRate: null,
+    recommendedRate: null,
     currentDemandScore: 30,
     recommendedTimeRange: '9:00 PM – 7:00 AM',
   );

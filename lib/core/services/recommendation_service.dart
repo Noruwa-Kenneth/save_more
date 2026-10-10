@@ -6,11 +6,15 @@ class RecommendationService {
 
   EnergyRecommendation createRecommendation({
     required RatePeriod? currentRate,
+    required RatePeriod? recommendedRate,
     required double currentDemandScore,
     required String recommendedTimeRange,
   }) {
     final bool isLowDemand = currentDemandScore <= 40;
-    final bool isLowerCost = _isLowerCostPeriod(currentRate);
+    final bool isLowerCost = _isLowerCostComparedWith(
+      currentRate: currentRate,
+      recommendedRate: recommendedRate,
+    );
 
     if (isLowDemand && isLowerCost) {
       return EnergyRecommendation(
@@ -47,10 +51,13 @@ class RecommendationService {
     );
   }
 
-  /// Off-Peak and Reduced periods are treated as lower-cost windows.
-  bool _isLowerCostPeriod(RatePeriod? currentRate) {
-    if (currentRate == null) return false;
-    final name = currentRate.name.toLowerCase();
-    return name == 'off-peak' || name == 'reduced';
+  /// A recommendation is lower cost only when its actual rate is cheaper
+  /// than the rate that applies now. Plan labels can vary, so compare prices.
+  bool _isLowerCostComparedWith({
+    required RatePeriod? currentRate,
+    required RatePeriod? recommendedRate,
+  }) {
+    if (currentRate == null || recommendedRate == null) return false;
+    return recommendedRate.rateCentsPerKwh < currentRate.rateCentsPerKwh;
   }
 }

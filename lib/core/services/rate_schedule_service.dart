@@ -208,6 +208,18 @@ class RateScheduleService {
 
     // Time-of-Day
     if (rate.rateType == RateType.timeOfDay) {
+      final isWeekend =
+          now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
+
+      if (isWeekend) {
+        return const RatePeriod(
+          name: 'Off-Peak',
+          rateCentsPerKwh: 12.436,
+          startTime: '12:00 AM',
+          endTime: '11:59 PM',
+        );
+      }
+
       return const RatePeriod(
         name: 'Off-Peak',
         rateCentsPerKwh: 12.436,

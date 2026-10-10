@@ -47,13 +47,21 @@ void main() {
     });
 
     test('Weekend should be Off-Peak all day', () {
+      final weekend = DateTime(2026, 1, 17, 15, 0);
       final result = service.getCurrentPeriod(
         rate: RateDatabase.timeOfDay,
-        dateTime: DateTime(2026, 1, 17, 15, 0),
+        dateTime: weekend,
+      );
+      final bestTime = service.getBestTimeToUse(
+        rate: RateDatabase.timeOfDay,
+        dateTime: weekend,
       );
 
       expect(result?.name, 'Off-Peak');
       expect(result?.rateCentsPerKwh, 12.436);
+      expect(bestTime?.name, 'Off-Peak');
+      expect(bestTime?.startTime, '12:00 AM');
+      expect(bestTime?.endTime, '11:59 PM');
     });
 
     test('Summer weekday daytime should be Mid-Peak', () {
