@@ -30,6 +30,9 @@ class DemandForecast {
   final DateTime peakEnd;
   final int peakScore;
   final DemandLevel peakLevel;
+  final DateTime? recommendedStart;
+  final DateTime? recommendedEnd;
+  final double? recommendedAverageRate;
 
   const DemandForecast({
     required this.range,
@@ -38,10 +41,30 @@ class DemandForecast {
     required this.peakEnd,
     required this.peakScore,
     required this.peakLevel,
+    this.recommendedStart,
+    this.recommendedEnd,
+    this.recommendedAverageRate,
   });
 
   String get peakTimeRange {
     return '${_formatTime(peakStart)} – ${_formatTime(peakEnd)}';
+  }
+
+  /// Best forecast window to run flexible, high-load appliances.
+  String? get recommendedTimeRange {
+    final start = recommendedStart;
+    final end = recommendedEnd;
+    if (start == null || end == null) return null;
+
+    final startLabel = _formatTime(start);
+    final endLabel = _formatTime(end);
+    if (range == ForecastRange.next7Days ||
+        start.year != end.year ||
+        start.month != end.month ||
+        start.day != end.day) {
+      return '${_formatShortDate(start)} $startLabel – ${_formatShortDate(end)} $endLabel';
+    }
+    return '$startLabel – $endLabel';
   }
 
   /// Human-readable level for the peak window (used on Home Outlook).

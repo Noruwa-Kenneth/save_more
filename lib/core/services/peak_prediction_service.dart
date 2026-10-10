@@ -1,6 +1,8 @@
 import '../models/demand_forecast.dart';
+import '../models/electricity_rate.dart';
 import '../models/peak_prediction.dart';
 import '../models/weather_data.dart';
+import 'rate_schedule_service.dart';
 
 class PeakPredictionService {
   PeakPrediction calculate({
@@ -52,6 +54,7 @@ class PeakPredictionService {
   DemandForecast buildForecast({
     required List<WeatherData> hourlyWeather,
     required ForecastRange range,
+    ElectricityRate? rate,
     DateTime? now,
   }) {
     final reference = now ?? DateTime.now();
@@ -72,6 +75,8 @@ class PeakPredictionService {
         peakEnd: fallbackTime.add(const Duration(hours: 1)),
         peakScore: 20,
         peakLevel: DemandLevel.low,
+        recommendedStart: null,
+        recommendedEnd: null,
       );
     }
 
@@ -115,6 +120,11 @@ class PeakPredictionService {
     }
 
     final peakWindow = _findPeakWindow(points, isDaily: range == ForecastRange.next7Days);
+    final applianceWindow = _findApplianceWindow(
+      filtered,
+      rate: rate,
+      after: reference,
+    );
 
     return DemandForecast(
       range: range,
@@ -123,7 +133,72 @@ class PeakPredictionService {
       peakEnd: peakWindow.$2,
       peakScore: peakWindow.$3,
       peakLevel: _levelFor(peakWindow.$3),
+      recommendedStart: applianceWindow?.$1,
+      recommendedEnd: applianceWindow?.$2,
+      recommendedAverageRate: applianceWindow?.$3,
     );
+  }
+
+  /// Selects the lowest-demand consecutive window for flexible appliances.
+  /// When demand scores tie, a lower rate from the selected plan wins.
+  (DateTime, DateTime, double?)? _findApplianceWindow(
+    List<WeatherData> hourly, {
+    required ElectricityRate? rate,
+    required DateTime after,
+  }) {
+    final samples = hourly
+        .where((sample) => !sample.time.isBefore(after))
+        .toList()
+      ..sort((a, b) => a.time.compareTo(b.time));
+    if (samples.isEmpty) return null;
+    final windowLength = samples.length < 3 ? samples.length : 3;
+    var bestStart = -1;
+    var bestDemandScore = double.infinity;
+    var bestRate = double.infinity;
+    const rateSchedule = RateScheduleService();
+
+    for (var start = 0; start <= samples.length - windowLength; start++) {
+      var isConsecutive = true;
+      var demandTotal = 0;
+      var rateTotal = 0.0;
+      for (var offset = 0; offset < windowLength; offset++) {
+        final sample = samples[start + offset];
+        if (offset > 0 &&
+            sample.time.difference(samples[start + offset - 1].time).inMinutes != 60) {
+          isConsecutive = false;
+          break;
+        }
+        demandTotal += _scoreFor(weather: sample, dateTime: sample.time);
+        if (rate != null && rate.rateType != RateType.flat) {
+          rateTotal += rateSchedule
+                  .getCurrentPeriod(rate: rate, dateTime: sample.time)
+                  ?.rateCentsPerKwh ??
+              0;
+        }
+      }
+      if (!isConsecutive) continue;
+
+      final averageDemand = demandTotal / windowLength;
+      final averageRate = rate == null || rate.rateType == RateType.flat
+          ? 0.0
+          : rateTotal / windowLength;
+      if (averageDemand < bestDemandScore ||
+          (averageDemand == bestDemandScore && averageRate < bestRate)) {
+        bestStart = start;
+        bestDemandScore = averageDemand;
+        bestRate = averageRate;
+      }
+    }
+
+    if (bestStart < 0) return null;
+    final start = samples[bestStart].time;
+    final end = samples[bestStart + windowLength - 1].time.add(
+      const Duration(hours: 1),
+    );
+    final averageRate = rate == null || rate.rateType == RateType.flat
+        ? null
+        : bestRate;
+    return (start, end, averageRate);
   }
 
   List<WeatherData> _filterForRange(

@@ -133,7 +133,7 @@ class _PeakForecastPageState extends ConsumerState<PeakForecastPage> {
     );
   }
 
-  Widget _buildTab({equired String title, required ForecastRange range}) {
+  Widget _buildTab() {
     final selected = _selectedRange == range;
 
     return Expanded(
@@ -210,6 +210,59 @@ class _ForecastContent extends StatelessWidget {
             _legendItem(color: AppColors.highDemand, text: 'High (70–100%)'),
           ],
         ),
+        if (forecast.recommendedTimeRange != null) ...[
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF5EE),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFCDE6D4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Better time for appliances',
+                  style: TextStyle(
+                    color: AppColors.primaryNavy,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  forecast.recommendedTimeRange!,
+                  style: const TextStyle(
+                    color: Color(0xFF267443),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'This is the lowest-demand consecutive window in the forecast. If it fits your routine, shift flexible use such as laundry or dishwashing to this time.',
+                  style: TextStyle(
+                    color: Color(0xFF333333),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                if (forecast.recommendedAverageRate != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Estimated plan rate: ${forecast.recommendedAverageRate!.toStringAsFixed(2)}¢/kWh',
+                    style: const TextStyle(
+                      color: Color(0xFF555555),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 28),
         Container(
           width: double.infinity,
