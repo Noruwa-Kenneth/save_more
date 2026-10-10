@@ -278,6 +278,7 @@ class _HomeSuccessBody extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
+            // Meter = grid demand right now
             Center(
               child: DemandMeter(
                 percentage: prediction.score / 100,
@@ -287,10 +288,11 @@ class _HomeSuccessBody extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+            // Outlook = today's forecast peak window (same as Peak Forecast)
             PredictionCard(
               day: "Today's Outlook",
-              timeRange: prediction.timeRange,
-              demandLevel: prediction.demandText,
+              timeRange: data.outlookTimeRange,
+              demandLevel: data.outlookDemandLevel,
               onTap: onOpenPeakForecast,
             ),
             const SizedBox(height: 16),

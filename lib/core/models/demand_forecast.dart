@@ -44,13 +44,29 @@ class DemandForecast {
     return '${_formatTime(peakStart)} – ${_formatTime(peakEnd)}';
   }
 
+  /// Human-readable level for the peak window (used on Home Outlook).
+  String get peakDemandText {
+    switch (peakLevel) {
+      case DemandLevel.high:
+        return 'High demand';
+      case DemandLevel.moderate:
+        return 'Moderate demand';
+      case DemandLevel.low:
+        return 'Low demand';
+    }
+  }
+
   String get dateLabel {
     switch (range) {
       case ForecastRange.today:
-        return _formatFullDate(points.isEmpty ? DateTime.now() : points.first.time);
+        return _formatFullDate(
+          points.isEmpty ? DateTime.now() : points.first.time,
+        );
       case ForecastRange.tomorrow:
         return _formatFullDate(
-          points.isEmpty ? DateTime.now().add(const Duration(days: 1)) : points.first.time,
+          points.isEmpty
+              ? DateTime.now().add(const Duration(days: 1))
+              : points.first.time,
         );
       case ForecastRange.next7Days:
         if (points.isEmpty) return 'Next 7 days';
@@ -84,16 +100,36 @@ class DemandForecast {
 
   static String _formatFullDate(DateTime dt) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
 
   static String _formatShortDate(DateTime dt) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}';
   }
