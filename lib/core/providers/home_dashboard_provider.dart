@@ -77,21 +77,27 @@ final homeDashboardProvider = FutureProvider<HomeDashboardData>((ref) async {
     dateTime: DateTime.now(),
   );
 
-  final bestTime = rateScheduleService.getBestTimeToUse(
-    rate: electricityRate,
-    dateTime: DateTime.now(),
-  );
-
-  final recommendedTimeRange = bestTime != null
-      ? '${bestTime.startTime} – ${bestTime.endTime}'
-      : prediction.recommendedTimeRange;
-
-  final recommendation = recommendationService.createRecommendation(
-    currentRate: currentRate,
-    recommendedRate: bestTime,
-    currentDemandScore: prediction.score.toDouble(),
-    recommendedTimeRange: recommendedTimeRange,
-  );
+  final recommendedTimeRange = todayForecast.recommendedTimeRange;
+  final recommendedDemandScore = todayForecast.recommendedDemandScore;
+  final recommendedAverageRate = todayForecast.recommendedAverageRate;
+  final recommendation = recommendedTimeRange == null ||
+          recommendedDemandScore == null
+      ? const EnergyRecommendation(
+          timeRange: 'No suitable window found',
+          subtitle:
+              'No suitable hourly forecast window is available in the next 24 hours.',
+          demandLabel: 'Unavailable',
+          isLowerCost: false,
+        )
+      : recommendationService.createRecommendation(
+          currentRate: currentRate,
+          recommendedRate: null,
+          currentDemandScore: prediction.score.toDouble(),
+          recommendedDemandScore: recommendedDemandScore.toDouble(),
+          recommendedRateCentsPerKwh: recommendedAverageRate,
+          isForecastWindow: true,
+          recommendedTimeRange: recommendedTimeRange,
+        );
 
   return HomeDashboardData(
     location: location,

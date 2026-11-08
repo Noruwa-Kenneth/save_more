@@ -48,6 +48,19 @@ class _PeakForecastPageState extends ConsumerState<PeakForecastPage> {
                       ),
                     ),
                   ),
+                  Positioned(
+                    right: 8,
+                    child: IconButton(
+                      tooltip: 'Refresh forecast',
+                      onPressed: () =>
+                          ref.invalidate(peakForecastProvider(_selectedRange)),
+                      icon: const Icon(
+                        Icons.refresh,
+                        color: Colors.white,
+                        size: 23,
+                      ),
+                    ),
+                  ),
                   const Text(
                     'Peak Forecast',
                     style: TextStyle(
@@ -117,9 +130,8 @@ class _PeakForecastPageState extends ConsumerState<PeakForecastPage> {
                               peakForecastProvider(_selectedRange),
                             ),
                           ),
-                          data: (forecast) => _ForecastContent(
-                            forecast: forecast,
-                          ),
+                          data: (forecast) =>
+                              _ForecastContent(forecast: forecast),
                         ),
                       ],
                     ),
@@ -184,6 +196,37 @@ class _ForecastContent extends StatelessWidget {
             color: AppColors.primaryNavy,
             fontSize: 14,
             fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F5F8),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFDCE3E9)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.info_outline,
+                size: 17,
+                color: AppColors.secondaryNavy,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  forecast.dataFreshnessNote,
+                  style: const TextStyle(
+                    color: Color(0xFF555555),
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 18),
@@ -259,6 +302,39 @@ class _ForecastContent extends StatelessWidget {
                     ),
                   ),
                 ],
+              ],
+            ),
+          ),
+        ] else if (forecast.range == ForecastRange.today) ...[
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F5F8),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFDCE3E9)),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Appliance timing unavailable',
+                  style: TextStyle(
+                    color: AppColors.primaryNavy,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'No suitable appliance window was found in the next 24 hours. Check again later or view Tomorrow’s forecast.',
+                  style: TextStyle(
+                    color: Color(0xFF333333),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),
@@ -415,7 +491,11 @@ class ClockPainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2 - 2;
 
     canvas.drawCircle(center, radius, paint);
-    canvas.drawLine(center, Offset(center.dx, center.dy - radius * 0.48), paint);
+    canvas.drawLine(
+      center,
+      Offset(center.dx, center.dy - radius * 0.48),
+      paint,
+    );
     canvas.drawLine(
       center,
       Offset(center.dx + radius * 0.48, center.dy + radius * 0.18),

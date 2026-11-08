@@ -1,14 +1,16 @@
 import '../models/demand_forecast.dart';
 import '../models/electricity_rate.dart';
+import '../models/grid_demand_sample.dart';
 import '../models/peak_prediction.dart';
 import '../models/weather_data.dart';
+import 'grid_demand_profile_service.dart';
 import 'rate_schedule_service.dart';
 
 class PeakPredictionService {
-  PeakPrediction calculate({
-    required WeatherData weather,
-    DateTime? dateTime,
-  }) {
+  static const _gridDemandProfileService = GridDemandProfileService();
+  static const _peakWindowHours = 3;
+
+  PeakPrediction calculate({required WeatherData weather, DateTime? dateTime}) {
     final now = dateTime ?? weather.time;
     final score = _scoreFor(weather: weather, dateTime: now);
     final level = _levelFor(score);
@@ -55,10 +57,26 @@ class PeakPredictionService {
     required List<WeatherData> hourlyWeather,
     required ForecastRange range,
     ElectricityRate? rate,
+    List<GridDemandSample> historicalGridDemand = const [],
+    DateTime? historicalDemandThrough,
+    String? historicalDemandWarning,
+    DateTime? weatherRetrievedAt,
     DateTime? now,
   }) {
     final reference = now ?? DateTime.now();
     final filtered = _filterForRange(hourlyWeather, range, reference);
+    final historicalProfile = historicalGridDemand.isEmpty
+        ? null
+        : _gridDemandProfileService.buildProfile(historicalGridDemand);
+    final applianceHours = range == ForecastRange.today
+        ? _filterForNext24Hours(hourlyWeather, reference)
+        : filtered;
+    final applianceWindow = _findApplianceWindow(
+      applianceHours,
+      rate: rate,
+      after: reference,
+      historicalProfile: historicalProfile,
+    );
 
     if (filtered.isEmpty) {
       final fallbackTime = reference;
@@ -75,29 +93,48 @@ class PeakPredictionService {
         peakEnd: fallbackTime.add(const Duration(hours: 1)),
         peakScore: 20,
         peakLevel: DemandLevel.low,
-        recommendedStart: null,
-        recommendedEnd: null,
+        recommendedStart: applianceWindow?.$1,
+        recommendedEnd: applianceWindow?.$2,
+        recommendedAverageRate: applianceWindow?.$3,
+        recommendedDemandScore: applianceWindow?.$4,
+        historicalDemandThrough: historicalDemandThrough,
+        historicalDemandWarning: historicalDemandWarning,
+        weatherRetrievedAt: weatherRetrievedAt,
       );
     }
 
+    final hourlyPoints = filtered.map((weather) {
+      final score = _scoreForForecast(
+        weather: weather,
+        dateTime: weather.time,
+        historicalProfile: historicalProfile,
+      );
+      return DemandForecastPoint(
+        time: weather.time,
+        score: score,
+        level: _levelFor(score),
+      );
+    }).toList()..sort((a, b) => a.time.compareTo(b.time));
     final points = <DemandForecastPoint>[];
 
     if (range == ForecastRange.next7Days) {
-      // One point per day: maximum demand score that day.
-      final byDay = <DateTime, List<WeatherData>>{};
-      for (final w in filtered) {
-        final dayKey = DateTime(w.time.year, w.time.month, w.time.day);
-        byDay.putIfAbsent(dayKey, () => []).add(w);
+      // Keep the chart readable with one point per day, but retain hourly
+      // scores separately for the Peak period card and appliance advice.
+      final byDay = <DateTime, List<DemandForecastPoint>>{};
+      for (final point in hourlyPoints) {
+        final dayKey = DateTime(
+          point.time.year,
+          point.time.month,
+          point.time.day,
+        );
+        byDay.putIfAbsent(dayKey, () => []).add(point);
       }
 
       final sortedDays = byDay.keys.toList()..sort();
       for (final day in sortedDays) {
-        final samples = byDay[day]!;
-        var maxScore = 0;
-        for (final w in samples) {
-          final s = _scoreFor(weather: w, dateTime: w.time);
-          if (s > maxScore) maxScore = s;
-        }
+        final maxScore = byDay[day]!
+            .map((point) => point.score)
+            .reduce((a, b) => a > b ? a : b);
         points.add(
           DemandForecastPoint(
             time: day,
@@ -107,24 +144,10 @@ class PeakPredictionService {
         );
       }
     } else {
-      for (final w in filtered) {
-        final score = _scoreFor(weather: w, dateTime: w.time);
-        points.add(
-          DemandForecastPoint(
-            time: w.time,
-            score: score,
-            level: _levelFor(score),
-          ),
-        );
-      }
+      points.addAll(hourlyPoints);
     }
 
-    final peakWindow = _findPeakWindow(points, isDaily: range == ForecastRange.next7Days);
-    final applianceWindow = _findApplianceWindow(
-      filtered,
-      rate: rate,
-      after: reference,
-    );
+    final peakWindow = _findPeakWindow(hourlyPoints);
 
     return DemandForecast(
       range: range,
@@ -136,20 +159,39 @@ class PeakPredictionService {
       recommendedStart: applianceWindow?.$1,
       recommendedEnd: applianceWindow?.$2,
       recommendedAverageRate: applianceWindow?.$3,
+      recommendedDemandScore: applianceWindow?.$4,
+      historicalDemandThrough: historicalDemandThrough,
+      historicalDemandWarning: historicalDemandWarning,
+      weatherRetrievedAt: weatherRetrievedAt,
     );
+  }
+
+  /// Keeps Today's chart data unchanged while searching appliance timing over
+  /// the next 24 hours, which may include tomorrow's forecast hours.
+  List<WeatherData> _filterForNext24Hours(
+    List<WeatherData> hourly,
+    DateTime reference,
+  ) {
+    final end = reference.add(const Duration(hours: 24));
+    return hourly
+        .where(
+          (sample) =>
+              !sample.time.isBefore(reference) && sample.time.isBefore(end),
+        )
+        .toList();
   }
 
   /// Selects the lowest-demand consecutive window for flexible appliances.
   /// When demand scores tie, a lower rate from the selected plan wins.
-  (DateTime, DateTime, double?)? _findApplianceWindow(
+  (DateTime, DateTime, double?, int)? _findApplianceWindow(
     List<WeatherData> hourly, {
     required ElectricityRate? rate,
     required DateTime after,
+    required GridDemandProfile? historicalProfile,
   }) {
-    final samples = hourly
-        .where((sample) => !sample.time.isBefore(after))
-        .toList()
-      ..sort((a, b) => a.time.compareTo(b.time));
+    final samples =
+        hourly.where((sample) => !sample.time.isBefore(after)).toList()
+          ..sort((a, b) => a.time.compareTo(b.time));
     if (samples.isEmpty) return null;
     final windowLength = samples.length < 3 ? samples.length : 3;
     var bestStart = -1;
@@ -164,13 +206,21 @@ class PeakPredictionService {
       for (var offset = 0; offset < windowLength; offset++) {
         final sample = samples[start + offset];
         if (offset > 0 &&
-            sample.time.difference(samples[start + offset - 1].time).inMinutes != 60) {
+            sample.time
+                    .difference(samples[start + offset - 1].time)
+                    .inMinutes !=
+                60) {
           isConsecutive = false;
           break;
         }
-        demandTotal += _scoreFor(weather: sample, dateTime: sample.time);
+        demandTotal += _scoreForForecast(
+          weather: sample,
+          dateTime: sample.time,
+          historicalProfile: historicalProfile,
+        );
         if (rate != null && rate.rateType != RateType.flat) {
-          rateTotal += rateSchedule
+          rateTotal +=
+              rateSchedule
                   .getCurrentPeriod(rate: rate, dateTime: sample.time)
                   ?.rateCentsPerKwh ??
               0;
@@ -198,7 +248,7 @@ class PeakPredictionService {
     final averageRate = rate == null || rate.rateType == RateType.flat
         ? null
         : bestRate;
-    return (start, end, averageRate);
+    return (start, end, averageRate, bestDemandScore.round());
   }
 
   List<WeatherData> _filterForRange(
@@ -242,51 +292,50 @@ class PeakPredictionService {
     }
   }
 
-  /// Returns (start, end, peakScore) for the highest-demand window.
-  (DateTime, DateTime, int) _findPeakWindow(
-    List<DemandForecastPoint> points, {
-    required bool isDaily,
-  }) {
+  /// Returns (start, end, peakScore) for the highest-scoring 3-hour block.
+  (DateTime, DateTime, int) _findPeakWindow(List<DemandForecastPoint> points) {
     if (points.isEmpty) {
       final now = DateTime.now();
       return (now, now.add(const Duration(hours: 1)), 20);
     }
 
-    // Prefer consecutive high hours (>= 70).
-    var bestStart = 0;
-    var bestEnd = 0;
-    var bestSum = -1;
+    // Find the highest average score over a bounded, consecutive 3-hour block.
+    // Consider all scores so the card still identifies the busiest forecast
+    // window when no hour reaches the high-demand threshold.
+    var bestStart = -1;
+    var bestAverage = -1.0;
+    for (var start = 0; start <= points.length - _peakWindowHours; start++) {
+      var consecutive = true;
+      var total = 0;
+      for (var offset = 0; offset < _peakWindowHours; offset++) {
+        final point = points[start + offset];
+        if (offset > 0 &&
+            point.time.difference(points[start + offset - 1].time).inMinutes !=
+                60) {
+          consecutive = false;
+          break;
+        }
+        total += point.score;
+      }
+      if (!consecutive) continue;
 
-    var i = 0;
-    while (i < points.length) {
-      if (points[i].score < 70) {
-        i++;
-        continue;
+      final average = total / _peakWindowHours;
+      if (average > bestAverage) {
+        bestStart = start;
+        bestAverage = average;
       }
-      var j = i;
-      var sum = 0;
-      while (j < points.length && points[j].score >= 70) {
-        sum += points[j].score;
-        j++;
-      }
-      if (sum > bestSum) {
-        bestSum = sum;
-        bestStart = i;
-        bestEnd = j - 1;
-      }
-      i = j;
     }
 
-    if (bestSum >= 0) {
+    if (bestStart >= 0) {
       final start = points[bestStart].time;
-      final end = isDaily
-          ? points[bestEnd].time.add(const Duration(hours: 23))
-          : points[bestEnd].time.add(const Duration(hours: 1));
-      final avg = (bestSum / (bestEnd - bestStart + 1)).round();
-      return (start, end, avg);
+      final end = points[bestStart + _peakWindowHours - 1].time.add(
+        const Duration(hours: 1),
+      );
+      return (start, end, bestAverage.round());
     }
 
-    // Fallback: single highest score point.
+    // If the data has gaps or fewer than three consecutive hours, use the
+    // highest-scoring available hour rather than presenting a false interval.
     var maxIndex = 0;
     for (var k = 1; k < points.length; k++) {
       if (points[k].score > points[maxIndex].score) {
@@ -294,11 +343,7 @@ class PeakPredictionService {
       }
     }
     final peak = points[maxIndex];
-    return (
-      peak.time,
-      peak.time.add(isDaily ? const Duration(hours: 23) : const Duration(hours: 1)),
-      peak.score,
-    );
+    return (peak.time, peak.time.add(const Duration(hours: 1)), peak.score);
   }
 
   int _scoreFor({required WeatherData weather, required DateTime dateTime}) {
@@ -331,6 +376,29 @@ class PeakPredictionService {
     }
 
     return score.clamp(0, 100);
+  }
+
+  int _scoreForForecast({
+    required WeatherData weather,
+    required DateTime dateTime,
+    required GridDemandProfile? historicalProfile,
+  }) {
+    final historicalScore = historicalProfile?.scoreFor(dateTime);
+    if (historicalScore == null) {
+      return _scoreFor(weather: weather, dateTime: dateTime);
+    }
+
+    // The 2024 profile supplies the usual seasonal and hourly demand pattern.
+    // Apply a modest cold-weather uplift because electric heating can add load
+    // in Nova Scotia. These hand-set values are a heuristic, not a coefficient
+    // learned from paired historical weather and demand data.
+    final coldWeatherAdjustment = switch (weather.temperature) {
+      < -10 => 12,
+      < 0 => 8,
+      < 5 => 4,
+      _ => 0,
+    };
+    return (historicalScore + coldWeatherAdjustment).clamp(0, 100);
   }
 
   DemandLevel _levelFor(int score) {

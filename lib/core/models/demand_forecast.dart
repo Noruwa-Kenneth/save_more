@@ -16,11 +16,7 @@ class DemandForecastPoint {
 }
 
 /// Forecast range selected on the Peak Forecast page.
-enum ForecastRange {
-  today,
-  tomorrow,
-  next7Days,
-}
+enum ForecastRange { today, tomorrow, next7Days }
 
 /// Full forecast payload for the Peak Forecast UI.
 class DemandForecast {
@@ -33,6 +29,10 @@ class DemandForecast {
   final DateTime? recommendedStart;
   final DateTime? recommendedEnd;
   final double? recommendedAverageRate;
+  final int? recommendedDemandScore;
+  final DateTime? historicalDemandThrough;
+  final String? historicalDemandWarning;
+  final DateTime? weatherRetrievedAt;
 
   const DemandForecast({
     required this.range,
@@ -44,10 +44,83 @@ class DemandForecast {
     this.recommendedStart,
     this.recommendedEnd,
     this.recommendedAverageRate,
+    this.recommendedDemandScore,
+    this.historicalDemandThrough,
+    this.historicalDemandWarning,
+    this.weatherRetrievedAt,
   });
 
+  /// Explains the age and limits of the grid-demand profile used by this
+  /// forecast. The profile is historical, never a real-time grid reading.
+  String get gridDemandDataNote {
+    final through = historicalDemandThrough;
+    final base = through == null
+        ? 'Historical grid-demand data is unavailable. This forecast uses '
+              'weather and schedule patterns only.'
+        : _historicalDateNote(through);
+    final warning = historicalDemandWarning;
+    return warning == null ? base : '$base $warning';
+  }
+
+  String _historicalDateNote(DateTime through) {
+    final date =
+        '${_monthAbbreviation(through.month)} ${through.day}, ${through.year}';
+    final age = DateTime.now().difference(through).inDays;
+    final freshness = age > 365
+        ? ' This profile is over a year old.'
+        : age > 45
+        ? ' The newest reading is $age days old, so the published grid data '
+              'may be delayed.'
+        : '';
+    return 'Historical Nova Scotia grid data through $date; it is not live '
+        'grid demand.$freshness';
+  }
+
+  String get dataFreshnessNote {
+    final retrievedAt = weatherRetrievedAt;
+    final weatherNote = retrievedAt == null
+        ? 'Weather forecast retrieval time is unavailable.'
+        : DateTime.now().difference(retrievedAt).inHours >= 6
+        ? 'Weather forecast was last retrieved over 6 hours ago; refresh it '
+              'before relying on these estimates.'
+        : 'Weather forecast retrieved at ${_formatClockTime(retrievedAt)}.';
+    return '$gridDemandDataNote $weatherNote';
+  }
+
+  static String _formatClockTime(DateTime time) {
+    final hour = time.hour % 12 == 0 ? 12 : time.hour % 12;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
+  }
+
+  static String _monthAbbreviation(int month) => const [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][month - 1];
+
   String get peakTimeRange {
-    return '${_formatTime(peakStart)} – ${_formatTime(peakEnd)}';
+    final startLabel = _formatTime(peakStart);
+    final endLabel = _formatTime(peakEnd);
+    final spansDays =
+        peakStart.year != peakEnd.year ||
+        peakStart.month != peakEnd.month ||
+        peakStart.day != peakEnd.day;
+    if (range == ForecastRange.next7Days || spansDays) {
+      return '${_formatShortDate(peakStart)} $startLabel – '
+          '${_formatShortDate(peakEnd)} $endLabel';
+    }
+    return '$startLabel – $endLabel';
   }
 
   /// Best forecast window to run flexible, high-load appliances.
@@ -58,7 +131,15 @@ class DemandForecast {
 
     final startLabel = _formatTime(start);
     final endLabel = _formatTime(end);
+    final chartDate = points.isEmpty ? null : points.first.time;
+    final startsOnAnotherDay =
+        range == ForecastRange.today &&
+        chartDate != null &&
+        (start.year != chartDate.year ||
+            start.month != chartDate.month ||
+            start.day != chartDate.day);
     if (range == ForecastRange.next7Days ||
+        startsOnAnotherDay ||
         start.year != end.year ||
         start.month != end.month ||
         start.day != end.day) {

@@ -138,7 +138,7 @@ class RateScheduleService {
     if (!isWinter) {
       return const RatePeriod(
         name: 'Reduced',
-        rateCentsPerKwh: 12.436,
+        rateCentsPerKwh: 13.213,
         startTime: '12:00 AM',
         endTime: '11:59 PM',
       );
@@ -148,7 +148,7 @@ class RateScheduleService {
     if (isWeekend) {
       return const RatePeriod(
         name: 'Off-Peak',
-        rateCentsPerKwh: 12.436,
+        rateCentsPerKwh: 19.128,
         startTime: '12:00 AM',
         endTime: '11:59 PM',
       );
@@ -162,7 +162,7 @@ class RateScheduleService {
     if (minutes >= 7 * 60 && minutes < 11 * 60) {
       return const RatePeriod(
         name: 'Peak',
-        rateCentsPerKwh: 25.188,
+        rateCentsPerKwh: 37.321,
         startTime: '7:00 AM',
         endTime: '11:00 AM',
       );
@@ -171,7 +171,7 @@ class RateScheduleService {
     if (minutes >= 17 * 60 && minutes < 21 * 60) {
       return const RatePeriod(
         name: 'Peak',
-        rateCentsPerKwh: 25.188,
+        rateCentsPerKwh: 37.321,
         startTime: '5:00 PM',
         endTime: '9:00 PM',
       );
@@ -180,7 +180,7 @@ class RateScheduleService {
     if (minutes >= 11 * 60 && minutes < 17 * 60) {
       return const RatePeriod(
         name: 'Off-Peak',
-        rateCentsPerKwh: 12.436,
+        rateCentsPerKwh: 19.128,
         startTime: '11:00 AM',
         endTime: '5:00 PM',
       );
@@ -189,7 +189,7 @@ class RateScheduleService {
     // Overnight off-peak (9 PM – 7 AM)
     return const RatePeriod(
       name: 'Off-Peak',
-      rateCentsPerKwh: 12.436,
+      rateCentsPerKwh: 19.128,
       startTime: '9:00 PM',
       endTime: '7:00 AM',
     );
@@ -244,7 +244,7 @@ class RateScheduleService {
       if (!isWinter) {
         return const RatePeriod(
           name: 'Reduced',
-          rateCentsPerKwh: 12.436,
+          rateCentsPerKwh: 13.213,
           startTime: '12:00 AM',
           endTime: '11:59 PM',
         );
@@ -254,7 +254,7 @@ class RateScheduleService {
       if (isWeekend) {
         return const RatePeriod(
           name: 'Off-Peak',
-          rateCentsPerKwh: 12.436,
+          rateCentsPerKwh: 19.128,
           startTime: '12:00 AM',
           endTime: '11:59 PM',
         );
@@ -263,7 +263,7 @@ class RateScheduleService {
       // Winter weekday: best period is 9 PM – 7 AM.
       return const RatePeriod(
         name: 'Off-Peak',
-        rateCentsPerKwh: 12.436,
+        rateCentsPerKwh: 19.128,
         startTime: '9:00 PM',
         endTime: '7:00 AM',
       );

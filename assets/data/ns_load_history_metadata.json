@@ -1,0 +1,37 @@
+{
+  "source": "https://www.nspower.ca/oasis/monthly-reports/hourly-total-net-nova-scotia-load",
+  "generated_at_utc": "2026-11-08T06:37:18+00:00",
+  "timezone": "America/Halifax (source timestamps have no UTC offset)",
+  "included_years": [
+    2024,
+    2025,
+    2026
+  ],
+  "first_observation": "2024-01-01T00:00",
+  "latest_observation": "2026-08-31T23:00",
+  "latest_observation_age_days": 69,
+  "sample_count": 22656,
+  "per_year": [
+    {
+      "year": 2024,
+      "valid_hours": 8736,
+      "expected_hours": 8784,
+      "skipped_rows_or_hours": 48
+    },
+    {
+      "year": 2025,
+      "valid_hours": 8112,
+      "expected_hours": 8760,
+      "skipped_rows_or_hours": 647
+    },
+    {
+      "year": 2026,
+      "valid_hours": 5808,
+      "expected_hours": 7464,
+      "skipped_rows_or_hours": 2951
+    }
+  ],
+  "quality_warnings": [
+    "Some OASIS rows or incomplete clock-change hours were skipped; see per-year counts."
+  ]
+}

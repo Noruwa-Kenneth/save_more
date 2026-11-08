@@ -39,9 +39,10 @@ class GridDemandCsvParser {
     for (var i = headerLine + 1; i < lines.length; i++) {
       if (lines[i].trim().isEmpty) continue;
       final columns = _splitCsvLine(lines[i]);
+      if (columns.every((column) => column.trim().isEmpty)) continue;
       if (columns.length <= dateColumn || columns.length <= demandColumn) {
         throw FormatException(
-          'Incomplete grid-demand row at line ' + (i + 1).toString() + '.',
+          'Incomplete grid-demand row at line ${i + 1}.',
         );
       }
 
@@ -51,7 +52,7 @@ class GridDemandCsvParser {
       );
       if (time == null || demand == null || !demand.isFinite || demand < 0) {
         throw FormatException(
-          'Invalid grid-demand value at line ' + (i + 1).toString() + '.',
+          'Invalid grid-demand value at line ${i + 1}.',
         );
       }
       samples.add(GridDemandSample(time: time, demandMw: demand));
@@ -64,16 +65,17 @@ class GridDemandCsvParser {
       value.trim().replaceAll('"', '').toLowerCase();
 
   DateTime? _parseReportTime(String value) {
-    final match =
-        RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2})$')
-            .firstMatch(value);
+    // OASIS has used both M/D/YYYY and YYYY-MM-DD in its downloadable reports.
+    final match = RegExp(
+      r'^(?:(\d{1,2})/(\d{1,2})/(\d{4})|(\d{4})-(\d{1,2})-(\d{1,2}))\s+(\d{1,2}):(\d{2})$',
+    ).firstMatch(value);
     if (match == null) return null;
 
-    final month = int.parse(match[1]!);
-    final day = int.parse(match[2]!);
-    final year = int.parse(match[3]!);
-    final hour = int.parse(match[4]!);
-    final minute = int.parse(match[5]!);
+    final year = int.parse(match[3] ?? match[4]!);
+    final month = int.parse(match[1] ?? match[5]!);
+    final day = int.parse(match[2] ?? match[6]!);
+    final hour = int.parse(match[7]!);
+    final minute = int.parse(match[8]!);
     if (month < 1 || month > 12 || hour > 23 || minute > 59) return null;
 
     final time = DateTime(year, month, day, hour, minute);

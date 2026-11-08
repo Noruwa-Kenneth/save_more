@@ -9,3 +9,11 @@ class GridDemandSample {
 
   const GridDemandSample({required this.time, required this.demandMw});
 }
+
+/// Validated bundle of historical grid readings and update-health information.
+class GridDemandHistory {
+  final List<GridDemandSample> samples;
+  final String? warning;
+
+  const GridDemandHistory({required this.samples, this.warning});
+}

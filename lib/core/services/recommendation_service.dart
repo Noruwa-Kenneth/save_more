@@ -8,12 +8,17 @@ class RecommendationService {
     required RatePeriod? currentRate,
     required RatePeriod? recommendedRate,
     required double currentDemandScore,
+    double? recommendedDemandScore,
+    double? recommendedRateCentsPerKwh,
+    bool isForecastWindow = false,
     required String recommendedTimeRange,
   }) {
-    final bool isLowDemand = currentDemandScore <= 40;
+    final demandScore = recommendedDemandScore ?? currentDemandScore;
+    final bool isLowDemand = demandScore <= 40;
     final bool isLowerCost = _isLowerCostComparedWith(
       currentRate: currentRate,
       recommendedRate: recommendedRate,
+      recommendedRateCentsPerKwh: recommendedRateCentsPerKwh,
     );
 
     if (isLowDemand && isLowerCost) {
@@ -38,14 +43,16 @@ class RecommendationService {
       return EnergyRecommendation(
         timeRange: recommendedTimeRange,
         subtitle: 'Lower cost',
-        demandLabel: 'Lower demand period',
+        demandLabel: 'Higher demand',
         isLowerCost: true,
       );
     }
 
     return EnergyRecommendation(
       timeRange: recommendedTimeRange,
-      subtitle: 'Consider shifting usage',
+      subtitle: isForecastWindow
+          ? 'Lowest-demand available window'
+          : 'Consider shifting usage',
       demandLabel: 'Higher demand',
       isLowerCost: false,
     );
@@ -56,8 +63,12 @@ class RecommendationService {
   bool _isLowerCostComparedWith({
     required RatePeriod? currentRate,
     required RatePeriod? recommendedRate,
+    required double? recommendedRateCentsPerKwh,
   }) {
-    if (currentRate == null || recommendedRate == null) return false;
-    return recommendedRate.rateCentsPerKwh < currentRate.rateCentsPerKwh;
+    if (currentRate == null) return false;
+    final recommendedPrice =
+        recommendedRateCentsPerKwh ?? recommendedRate?.rateCentsPerKwh;
+    if (recommendedPrice == null) return false;
+    return recommendedPrice < currentRate.rateCentsPerKwh;
   }
 }

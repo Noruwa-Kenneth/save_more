@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/local_notification_service.dart';
 import '/theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
   final VoidCallback onBack;
 
-  const NotificationsScreen({
-    super.key,
-    required this.onBack,
-  });
+  const NotificationsScreen({super.key, required this.onBack});
 
   @override
-  State<NotificationsScreen> createState() =>
-      _NotificationsScreenState();
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState
-    extends State<NotificationsScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  static const _peakDemandAlertsKey =
+      LocalNotificationService.peakDemandPreferenceKey;
+  static const _energyTipsKey = 'notification_energy_tips';
+  static const _savingsAlertsKey = 'notification_savings_alerts';
+
   // ==============================================================
   // NOTIFICATION SETTINGS
   // ==============================================================
@@ -23,6 +25,63 @@ class _NotificationsScreenState
   bool _peakDemandAlerts = true;
   bool _energyTips = true;
   bool _savingsAlerts = true;
+  bool _preferencesLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationPreferences();
+  }
+
+  /// Restores the saved switch values before allowing the user to change them.
+  Future<void> _loadNotificationPreferences() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (!mounted) return;
+
+      setState(() {
+        _peakDemandAlerts = preferences.getBool(_peakDemandAlertsKey) ?? true;
+        _energyTips = preferences.getBool(_energyTipsKey) ?? true;
+        _savingsAlerts = preferences.getBool(_savingsAlertsKey) ?? true;
+        _preferencesLoaded = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _preferencesLoaded = true);
+      _showPreferenceMessage(
+        'Could not load saved preferences. Default settings are shown.',
+      );
+    }
+  }
+
+  /// Updates the switch and saves it on this device.
+  Future<void> _saveNotificationPreference({
+    required String key,
+    required bool value,
+    required ValueChanged<bool> updateValue,
+  }) async {
+    setState(() => updateValue(value));
+
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(key, value);
+      if (key == _peakDemandAlertsKey && !value) {
+        await LocalNotificationService.instance.cancelPeakDemandAlert();
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => updateValue(!value));
+      _showPreferenceMessage(
+        'Could not save that preference. The previous setting was restored.',
+      );
+    }
+  }
+
+  void _showPreferenceMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   // ==============================================================
   // BUILD
@@ -39,7 +98,6 @@ class _NotificationsScreenState
             // ============================================================
             // HEADER
             // ============================================================
-
             Container(
               height: 65,
               width: double.infinity,
@@ -77,27 +135,19 @@ class _NotificationsScreenState
             // ============================================================
             // CONTENT
             // ============================================================
-
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
 
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  20,
-                  20,
-                  35,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 35),
 
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
                     // ======================================================
                     // INTRODUCTION
                     // ======================================================
-
                     const Text(
                       'Stay informed',
                       style: TextStyle(
@@ -111,10 +161,10 @@ class _NotificationsScreenState
 
                     Text(
                       'Choose the alerts and recommendations '
-                      'you want to receive from PeakSaver NS.',
+                      'you want enabled. Peak demand alerts can be scheduled '
+                      'locally from the forecast screen on this device.',
                       style: TextStyle(
-                        color: Colors.white
-                            .withValues(alpha: 0.55),
+                        color: Colors.white.withValues(alpha: 0.55),
                         fontSize: 13,
                         height: 1.5,
                       ),
@@ -125,7 +175,6 @@ class _NotificationsScreenState
                     // ======================================================
                     // ALERTS
                     // ======================================================
-
                     _sectionTitle('ALERTS'),
 
                     const SizedBox(height: 10),
@@ -138,11 +187,14 @@ class _NotificationsScreenState
                       subtitle:
                           'Get notified when electricity demand is expected to be high.',
                       value: _peakDemandAlerts,
-                      onChanged: (value) {
-                        setState(() {
-                          _peakDemandAlerts = value;
-                        });
-                      },
+                      onChanged: _preferencesLoaded
+                          ? (value) => _saveNotificationPreference(
+                              key: _peakDemandAlertsKey,
+                              value: value,
+                              updateValue: (savedValue) =>
+                                  _peakDemandAlerts = savedValue,
+                            )
+                          : null,
                     ),
 
                     const SizedBox(height: 10),
@@ -155,11 +207,14 @@ class _NotificationsScreenState
                       subtitle:
                           'Receive personalized recommendations to reduce energy use.',
                       value: _energyTips,
-                      onChanged: (value) {
-                        setState(() {
-                          _energyTips = value;
-                        });
-                      },
+                      onChanged: _preferencesLoaded
+                          ? (value) => _saveNotificationPreference(
+                              key: _energyTipsKey,
+                              value: value,
+                              updateValue: (savedValue) =>
+                                  _energyTips = savedValue,
+                            )
+                          : null,
                     ),
 
                     const SizedBox(height: 10),
@@ -172,11 +227,14 @@ class _NotificationsScreenState
                       subtitle:
                           'Get notified when you have an opportunity to save money.',
                       value: _savingsAlerts,
-                      onChanged: (value) {
-                        setState(() {
-                          _savingsAlerts = value;
-                        });
-                      },
+                      onChanged: _preferencesLoaded
+                          ? (value) => _saveNotificationPreference(
+                              key: _savingsAlertsKey,
+                              value: value,
+                              updateValue: (savedValue) =>
+                                  _savingsAlerts = savedValue,
+                            )
+                          : null,
                     ),
 
                     const SizedBox(height: 28),
@@ -184,7 +242,6 @@ class _NotificationsScreenState
                     // ======================================================
                     // PREFERENCES
                     // ======================================================
-
                     _sectionTitle('PREFERENCES'),
 
                     const SizedBox(height: 10),
@@ -192,8 +249,7 @@ class _NotificationsScreenState
                     _buildPreferenceCard(
                       icon: Icons.tune_outlined,
                       title: 'Notification Preferences',
-                      subtitle:
-                          'Manage timing, frequency and alert settings.',
+                      subtitle: 'Manage timing, frequency and alert settings.',
                       onTap: () {
                         _showPreferenceSheet();
                       },
@@ -204,27 +260,22 @@ class _NotificationsScreenState
                     // ======================================================
                     // INFO CARD
                     // ======================================================
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
 
                       decoration: BoxDecoration(
-                        color: AppColors.secondaryNavy
-                            .withValues(alpha: 0.70),
+                        color: AppColors.secondaryNavy.withValues(alpha: 0.70),
 
-                        borderRadius:
-                            BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(16),
 
                         border: Border.all(
-                          color: Colors.white
-                              .withValues(alpha: 0.06),
+                          color: Colors.white.withValues(alpha: 0.06),
                         ),
                       ),
 
                       child: Row(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
 
                         children: [
                           const Icon(
@@ -242,8 +293,7 @@ class _NotificationsScreenState
                               'high-demand periods and discover '
                               'potential savings.',
                               style: TextStyle(
-                                color: Colors.white
-                                    .withValues(alpha: 0.50),
+                                color: Colors.white.withValues(alpha: 0.50),
                                 fontSize: 11,
                                 height: 1.5,
                               ),
@@ -258,13 +308,11 @@ class _NotificationsScreenState
                     // ======================================================
                     // APP NAME
                     // ======================================================
-
                     Center(
                       child: Text(
                         'PeakSaver NS',
                         style: TextStyle(
-                          color: Colors.white
-                              .withValues(alpha: 0.30),
+                          color: Colors.white.withValues(alpha: 0.30),
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
@@ -310,7 +358,7 @@ class _NotificationsScreenState
     required String title,
     required String subtitle,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool>? onChanged,
   }) {
     return Container(
       width: double.infinity,
@@ -318,14 +366,11 @@ class _NotificationsScreenState
       padding: const EdgeInsets.all(15),
 
       decoration: BoxDecoration(
-        color: AppColors.secondaryNavy
-            .withValues(alpha: 0.75),
+        color: AppColors.secondaryNavy.withValues(alpha: 0.75),
 
         borderRadius: BorderRadius.circular(16),
 
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
 
       child: Row(
@@ -333,7 +378,6 @@ class _NotificationsScreenState
           // ==========================================================
           // ICON
           // ==========================================================
-
           Container(
             width: 43,
             height: 43,
@@ -343,11 +387,7 @@ class _NotificationsScreenState
               borderRadius: BorderRadius.circular(12),
             ),
 
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 22,
-            ),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
 
           const SizedBox(width: 14),
@@ -355,11 +395,9 @@ class _NotificationsScreenState
           // ==========================================================
           // TEXT
           // ==========================================================
-
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
                 Text(
@@ -376,8 +414,7 @@ class _NotificationsScreenState
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white
-                        .withValues(alpha: 0.48),
+                    color: Colors.white.withValues(alpha: 0.48),
                     fontSize: 11,
                     height: 1.4,
                   ),
@@ -391,19 +428,15 @@ class _NotificationsScreenState
           // ==========================================================
           // SWITCH
           // ==========================================================
-
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
 
-            activeTrackColor:
-                AppColors.lowDemand,
+            activeTrackColor: AppColors.lowDemand,
 
-            inactiveTrackColor:
-                Colors.white.withValues(alpha: 0.15),
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
 
-            inactiveThumbColor:
-                Colors.white54,
+            inactiveThumbColor: Colors.white54,
           ),
         ],
       ),
@@ -434,15 +467,11 @@ class _NotificationsScreenState
           padding: const EdgeInsets.all(15),
 
           decoration: BoxDecoration(
-            color: AppColors.secondaryNavy
-                .withValues(alpha: 0.75),
+            color: AppColors.secondaryNavy.withValues(alpha: 0.75),
 
             borderRadius: BorderRadius.circular(16),
 
-            border: Border.all(
-              color: Colors.white
-                  .withValues(alpha: 0.06),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
           ),
 
           child: Row(
@@ -453,18 +482,12 @@ class _NotificationsScreenState
                 height: 43,
 
                 decoration: BoxDecoration(
-                  color: Colors.white
-                      .withValues(alpha: 0.07),
+                  color: Colors.white.withValues(alpha: 0.07),
 
-                  borderRadius:
-                      BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
 
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 21,
-                ),
+                child: Icon(icon, color: Colors.white, size: 21),
               ),
 
               const SizedBox(width: 14),
@@ -472,8 +495,7 @@ class _NotificationsScreenState
               // Text
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
                     Text(
@@ -490,8 +512,7 @@ class _NotificationsScreenState
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: Colors.white
-                            .withValues(alpha: 0.48),
+                        color: Colors.white.withValues(alpha: 0.48),
                         fontSize: 11,
                       ),
                     ),
@@ -502,8 +523,7 @@ class _NotificationsScreenState
               // Arrow
               Icon(
                 Icons.chevron_right,
-                color: Colors.white
-                    .withValues(alpha: 0.35),
+                color: Colors.white.withValues(alpha: 0.35),
                 size: 22,
               ),
             ],
@@ -517,117 +537,102 @@ class _NotificationsScreenState
   // NOTIFICATION PREFERENCES
   // ==============================================================
 
-void _showPreferenceSheet() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.primaryNavy,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(24),
+  void _showPreferenceSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.primaryNavy,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-    ),
-    builder: (context) {
-      return SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.75,
-          ),
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              20,
+      builder: (context) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ==========================================================
-                // HANDLE
-                // ==========================================================
-
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(10),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ==========================================================
+                  // HANDLE
+                  // ==========================================================
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 22),
+                  const SizedBox(height: 22),
 
-                // ==========================================================
-                // TITLE
-                // ==========================================================
-
-                const Text(
-                  'Notification Preferences',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                  // ==========================================================
+                  // TITLE
+                  // ==========================================================
+                  const Text(
+                    'Notification Preferences',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 8),
+                  const SizedBox(height: 8),
 
-                Text(
-                  'More notification controls will be available here.',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    fontSize: 12,
+                  Text(
+                    'More notification controls will be available here.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 12,
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 22),
+                  const SizedBox(height: 22),
 
-                // ==========================================================
-                // ALERT TIMING
-                // ==========================================================
+                  // ==========================================================
+                  // ALERT TIMING
+                  // ==========================================================
+                  _buildBottomSheetItem(
+                    icon: Icons.access_time_outlined,
+                    title: 'Alert Timing',
+                    subtitle: 'Choose when alerts can be delivered.',
+                  ),
 
-                _buildBottomSheetItem(
-                  icon: Icons.access_time_outlined,
-                  title: 'Alert Timing',
-                  subtitle:
-                      'Choose when alerts can be delivered.',
-                ),
+                  // ==========================================================
+                  // ALERT FREQUENCY
+                  // ==========================================================
+                  _buildBottomSheetItem(
+                    icon: Icons.notifications_active_outlined,
+                    title: 'Alert Frequency',
+                    subtitle: 'Control how often you receive alerts.',
+                  ),
 
-                // ==========================================================
-                // ALERT FREQUENCY
-                // ==========================================================
+                  // ==========================================================
+                  // NOTIFICATION SOUND
+                  // ==========================================================
+                  _buildBottomSheetItem(
+                    icon: Icons.volume_up_outlined,
+                    title: 'Notification Sound',
+                    subtitle: 'Manage notification sound preferences.',
+                  ),
 
-                _buildBottomSheetItem(
-                  icon: Icons.notifications_active_outlined,
-                  title: 'Alert Frequency',
-                  subtitle:
-                      'Control how often you receive alerts.',
-                ),
-
-                // ==========================================================
-                // NOTIFICATION SOUND
-                // ==========================================================
-
-                _buildBottomSheetItem(
-                  icon: Icons.volume_up_outlined,
-                  title: 'Notification Sound',
-                  subtitle:
-                      'Manage notification sound preferences.',
-                ),
-
-                const SizedBox(height: 10),
-              ],
+                  const SizedBox(height: 10),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   // ==============================================================
   // BOTTOM SHEET ITEM
@@ -643,18 +648,13 @@ void _showPreferenceSheet() {
 
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: Colors.white70,
-            size: 21,
-          ),
+          Icon(icon, color: Colors.white70, size: 21),
 
           const SizedBox(width: 14),
 
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
                 Text(
@@ -671,8 +671,7 @@ void _showPreferenceSheet() {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white
-                        .withValues(alpha: 0.45),
+                    color: Colors.white.withValues(alpha: 0.45),
                     fontSize: 11,
                   ),
                 ),

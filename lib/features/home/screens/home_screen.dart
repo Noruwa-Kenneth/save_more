@@ -261,6 +261,13 @@ class _HomeSuccessBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final prediction = data.prediction;
     final recommendation = data.recommendation;
+    final recommendedDemandScore = data.todayForecast.recommendedDemandScore;
+    final recommendationColor = switch (recommendedDemandScore) {
+      null => AppColors.textMuted,
+      <= 40 => AppColors.lowDemand,
+      >= 70 => AppColors.highDemand,
+      _ => AppColors.moderateDemand,
+    };
 
     return SingleChildScrollView(
       child: Padding(
@@ -300,9 +307,7 @@ class _HomeSuccessBody extends StatelessWidget {
               title: 'Best Time to Use Appliances',
               timeRange: recommendation.timeRange,
               subtitle: recommendation.subtitle,
-              demandColor: recommendation.isLowerCost
-                  ? AppColors.lowDemand
-                  : AppColors.moderateDemand,
+              demandColor: recommendationColor,
             ),
           ],
         ),

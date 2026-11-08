@@ -50,10 +50,10 @@ class GridStatusCard extends StatelessWidget {
 
                   Text(
                     timeRange,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.lowDemand,
+                      color: demandColor,
                     ),
                   ),
 
