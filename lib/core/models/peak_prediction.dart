@@ -11,8 +11,10 @@ class PeakPrediction {
   final String explanation;
   final String peakStartTime;
   final String peakEndTime;
-final String recommendedStartTime;
-final String recommendedEndTime;
+  final String recommendedStartTime;
+  final String recommendedEndTime;
+  final bool usesMeasuredGridDemand;
+
   const PeakPrediction({
     required this.score,
     required this.level,
@@ -20,8 +22,9 @@ final String recommendedEndTime;
     required this.explanation,
     required this.peakStartTime,
     required this.peakEndTime,
-     required this.recommendedStartTime,
-  required this.recommendedEndTime,
+    required this.recommendedStartTime,
+    required this.recommendedEndTime,
+    this.usesMeasuredGridDemand = false,
   });
 
   String get statusText {
@@ -49,9 +52,7 @@ final String recommendedEndTime;
   String get timeRange {
     return '$peakStartTime – $peakEndTime';
   }
-
-
   String get recommendedTimeRange {
-  return '$recommendedStartTime – $recommendedEndTime';
-}
+    return '$recommendedStartTime – $recommendedEndTime';
+  }
 }

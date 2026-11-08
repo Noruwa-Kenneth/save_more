@@ -25,9 +25,7 @@ class HomeScreen extends ConsumerWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PeakForecastPage(
-          onBack: () => Navigator.pop(context),
-        ),
+        builder: (_) => PeakForecastPage(onBack: () => Navigator.pop(context)),
       ),
     );
   }
@@ -199,10 +197,7 @@ class _HomeErrorBody extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _HomeErrorBody({
-    required this.message,
-    required this.onRetry,
-  });
+  const _HomeErrorBody({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +207,11 @@ class _HomeErrorBody extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined, color: Colors.white70, size: 48),
+            const Icon(
+              Icons.cloud_off_outlined,
+              color: Colors.white70,
+              size: 48,
+            ),
             const SizedBox(height: 16),
             const Text(
               'Could not load energy data',
@@ -285,12 +284,13 @@ class _HomeSuccessBody extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            // Meter = grid demand right now
             Center(
               child: DemandMeter(
                 percentage: prediction.score / 100,
                 statusText: prediction.statusText,
-                labelText: 'Grid Demand',
+                labelText: data.usesMeasuredGridDemand
+                    ? 'Current grid demand vs past levels'
+                    : 'Weather-based estimate',
                 onTap: onOpenPeakForecast,
               ),
             ),

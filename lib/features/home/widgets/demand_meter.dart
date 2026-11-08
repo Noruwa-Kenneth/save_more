@@ -21,7 +21,7 @@ class DemandMeter extends StatelessWidget {
 
     final Color demandColor = value <= 40
         ? AppColors.lowDemand
-        : value <= 75
+        : value < 70
         ? AppColors.moderateDemand
         : AppColors.highDemand;
 

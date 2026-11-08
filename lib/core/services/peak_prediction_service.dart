@@ -10,9 +10,14 @@ class PeakPredictionService {
   static const _gridDemandProfileService = GridDemandProfileService();
   static const _peakWindowHours = 3;
 
-  PeakPrediction calculate({required WeatherData weather, DateTime? dateTime}) {
+  PeakPrediction calculate({
+    required WeatherData weather,
+    DateTime? dateTime,
+    int? measuredGridDemandScore,
+  }) {
     final now = dateTime ?? weather.time;
-    final score = _scoreFor(weather: weather, dateTime: now);
+    final score = measuredGridDemandScore ??
+        _scoreFor(weather: weather, dateTime: now);
     final level = _levelFor(score);
 
     final reasons = <String>[];
@@ -36,7 +41,9 @@ class PeakPredictionService {
       reasons.add('morning demand period');
     }
 
-    final explanation = reasons.isEmpty
+    final explanation = measuredGridDemandScore != null
+        ? 'Measured province-wide grid load compared with historical levels.'
+        : reasons.isEmpty
         ? 'Normal electricity demand conditions.'
         : reasons.join(', ');
 
@@ -49,6 +56,7 @@ class PeakPredictionService {
       peakEndTime: '9:00 PM',
       recommendedStartTime: '9:00 PM',
       recommendedEndTime: '7:00 AM',
+      usesMeasuredGridDemand: measuredGridDemandScore != null,
     );
   }
 

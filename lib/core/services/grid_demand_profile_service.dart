@@ -62,10 +62,29 @@ class GridDemandProfile {
 
   const GridDemandProfile._({
     required this._byMonthHourWeekend,
-    required Map<_MonthHour, double> byMonthHour,
+    required this._byMonthHour,
     required this._byHour,
     required this._sortedLoads,
-  }) : _byMonthHour = byMonthHour;
+  });
+
+  /// Maps a measured load to its percentile across the historical readings.
+  /// A score near 50 means the load is around the middle of the dataset;
+  /// higher scores mean it is unusually high compared with that history.
+  int? scoreForMeasuredLoad(double demandMw) {
+    if (_sortedLoads.isEmpty) return null;
+
+    var low = 0;
+    var high = _sortedLoads.length;
+    while (low < high) {
+      final middle = (low + high) ~/ 2;
+      if (_sortedLoads[middle] <= demandMw) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    return (low * 100 / _sortedLoads.length).round().clamp(0, 100).toInt();
+  }
 
   /// Returns the historical percentile for a future hour, or null if the
   /// supplied data has no readings to compare.
