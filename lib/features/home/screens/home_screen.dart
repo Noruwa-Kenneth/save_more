@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:save_more/core/models/app_location.dart';
 import 'package:save_more/core/providers/home_dashboard_provider.dart';
+import 'package:save_more/core/services/nova_scotia_time.dart';
 import 'package:save_more/core/providers/location_provider.dart';
 import 'package:save_more/theme.dart';
 
@@ -15,7 +16,7 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   String _getGreeting() {
-    final hour = DateTime.now().hour;
+    final hour = NovaScotiaTime.now().hour;
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
@@ -288,9 +289,6 @@ class _HomeSuccessBody extends StatelessWidget {
               child: DemandMeter(
                 percentage: prediction.score / 100,
                 statusText: prediction.statusText,
-                labelText: data.usesMeasuredGridDemand
-                    ? 'Current grid demand vs past levels'
-                    : 'Weather-based estimate',
                 onTap: onOpenPeakForecast,
               ),
             ),

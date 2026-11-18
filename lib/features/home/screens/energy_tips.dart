@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/models/home_appliance_preferences.dart';
+import '../../../core/providers/home_appliance_preferences_provider.dart';
 import '/theme.dart';
 
 class EnergyTipItem {
@@ -17,7 +21,7 @@ class EnergyTipItem {
   });
 }
 
-class EnergyTipsScreen extends StatefulWidget {
+class EnergyTipsScreen extends ConsumerStatefulWidget {
   final VoidCallback onBack;
 
   const EnergyTipsScreen({
@@ -26,10 +30,10 @@ class EnergyTipsScreen extends StatefulWidget {
   });
 
   @override
-  State<EnergyTipsScreen> createState() => _EnergyTipsScreenState();
+  ConsumerState<EnergyTipsScreen> createState() => _EnergyTipsScreenState();
 }
 
-class _EnergyTipsScreenState extends State<EnergyTipsScreen> {
+class _EnergyTipsScreenState extends ConsumerState<EnergyTipsScreen> {
   String _selectedCategory = 'All';
 
   // ==============================================================
@@ -76,16 +80,20 @@ class _EnergyTipsScreenState extends State<EnergyTipsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appliancePreferences =
+        ref.watch(homeAppliancePreferencesProvider).value ??
+        const HomeAppliancePreferences();
     // ============================================================
     // FILTER TIPS
     // ============================================================
 
     final filteredTips = _tips.where((tip) {
-      if (_selectedCategory == 'All') {
-        return true;
-      }
-
-      return tip.category == _selectedCategory;
+      final matchesCategory =
+          _selectedCategory == 'All' || tip.category == _selectedCategory;
+      return matchesCategory && _isRelevantToAppliances(
+        tip,
+        appliancePreferences,
+      );
     }).toList();
 
     return Scaffold(
@@ -243,7 +251,7 @@ Padding(
                           child: filteredTips.isEmpty
                               ? const Center(
                                   child: Text(
-                                    'No tips under this category',
+                                    'No tips match your appliance preferences and this category',
                                     style: TextStyle(
                                       color:
                                           AppColors.textMuted,
@@ -477,5 +485,19 @@ Widget _buildCategoryTab(String category) {
         ),
       ),
     );
+  }
+
+  bool _isRelevantToAppliances(
+    EnergyTipItem tip,
+    HomeAppliancePreferences preferences,
+  ) {
+    switch (tip.category) {
+      case 'Heating':
+        return preferences.hasHeatingAppliance;
+      case 'Appliances':
+        return preferences.hasFlexibleAppliance;
+      default:
+        return true;
+    }
   }
 }

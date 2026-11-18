@@ -10,6 +10,9 @@ import 'appliance_preferences_screen.dart';
 import 'about_peaksaver_screen.dart';
 import 'help_support_screen.dart';
 import 'electricity_plan_screen.dart';
+import 'bill_usage_screen.dart';
+import 'appliance_shift_screen.dart';
+import 'efficient_habits_screen.dart';
 
 class MenuScreen extends ConsumerWidget {
   final VoidCallback onBack;
@@ -133,6 +136,51 @@ class MenuScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    _buildMenuItem(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'Bill Usage',
+                      subtitle: 'Enter monthly kWh from your electricity bill',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BillUsageScreen(
+                              onBack: () => Navigator.pop(context),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildMenuItem(
+                      icon: Icons.swap_horiz,
+                      title: 'Appliance Shifts',
+                      subtitle: 'Record completed off-peak shifts',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ApplianceShiftScreen(
+                              onBack: () => Navigator.pop(context),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildMenuItem(
+                      icon: Icons.eco_outlined,
+                      title: 'Efficient Habits',
+                      subtitle: 'Track reduced electricity use over time',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EfficientHabitsScreen(
+                              onBack: () => Navigator.pop(context),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     _buildMenuItem(
                       icon: Icons.home_outlined,
                       title: 'Appliance Preferences',

@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/models/home_appliance_preferences.dart';
+import '../../../core/providers/home_appliance_preferences_provider.dart';
+import '../../../core/services/home_appliance_preferences_storage.dart';
 import '/theme.dart';
 
-class AppliancePreferencesScreen extends StatefulWidget {
+class AppliancePreferencesScreen extends ConsumerStatefulWidget {
   final VoidCallback onBack;
 
   const AppliancePreferencesScreen({
@@ -10,12 +15,12 @@ class AppliancePreferencesScreen extends StatefulWidget {
   });
 
   @override
-  State<AppliancePreferencesScreen> createState() =>
+  ConsumerState<AppliancePreferencesScreen> createState() =>
       _AppliancePreferencesScreenState();
 }
 
 class _AppliancePreferencesScreenState
-    extends State<AppliancePreferencesScreen> {
+    extends ConsumerState<AppliancePreferencesScreen> {
   // ============================================================
   // APPLIANCE SELECTIONS
   // ============================================================
@@ -29,6 +34,34 @@ class _AppliancePreferencesScreenState
   bool _dryer = false;
   bool _electricStove = true;
   bool _evCharger = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final preferences = await ref.read(
+        homeAppliancePreferencesProvider.future,
+      );
+      if (!mounted) return;
+      setState(() {
+        _electricHeater = preferences.electricHeater;
+        _heatPump = preferences.heatPump;
+        _waterHeater = preferences.waterHeater;
+        _refrigerator = preferences.refrigerator;
+        _dishwasher = preferences.dishwasher;
+        _washingMachine = preferences.washingMachine;
+        _dryer = preferences.dryer;
+        _electricStove = preferences.electricStove;
+        _evCharger = preferences.evCharger;
+      });
+    } catch (_) {
+      // Keep the default selections visible if stored preferences cannot load.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -468,7 +501,29 @@ class _AppliancePreferencesScreenState
   // SAVE PREFERENCES
   // ==============================================================
 
-  void _savePreferences() {
+  Future<void> _savePreferences() async {
+    final preferences = HomeAppliancePreferences(
+      electricHeater: _electricHeater,
+      heatPump: _heatPump,
+      waterHeater: _waterHeater,
+      refrigerator: _refrigerator,
+      dishwasher: _dishwasher,
+      washingMachine: _washingMachine,
+      dryer: _dryer,
+      electricStove: _electricStove,
+      evCharger: _evCharger,
+    );
+    try {
+      await HomeAppliancePreferencesStorage().save(preferences);
+      ref.invalidate(homeAppliancePreferencesProvider);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save preferences: $error')),
+      );
+      return;
+    }
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text(

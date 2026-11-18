@@ -9,6 +9,7 @@ import '../models/grid_demand_sample.dart';
 import '../services/grid_demand_csv_parser.dart';
 import '../services/peak_prediction_service.dart';
 import '../services/weather_service.dart';
+import '../services/nova_scotia_time.dart';
 import 'location_provider.dart';
 import 'rate_plan_provider.dart';
 
@@ -53,7 +54,14 @@ final gridDemandHistoryProvider = FutureProvider<GridDemandHistory>((
     final latestTime = samples
         .map((sample) => sample.time)
         .reduce((a, b) => a.isAfter(b) ? a : b);
-    if (DateTime.now().difference(latestTime).inDays > 75) {
+    final latestInNovaScotia = NovaScotiaTime.at(
+      latestTime.year,
+      latestTime.month,
+      latestTime.day,
+      latestTime.hour,
+      latestTime.minute,
+    );
+    if (NovaScotiaTime.now().difference(latestInNovaScotia).inDays > 75) {
       warningParts.add(
         'The newest published grid reading is more than 75 days old.',
       );
@@ -120,7 +128,7 @@ final peakForecastProvider = FutureProvider.family<DemandForecast, ForecastRange
     longitude: location.longitude,
     forecastDays: 7,
   );
-  final weatherRetrievedAt = DateTime.now();
+  final weatherRetrievedAt = NovaScotiaTime.now();
 
   return predictionService.buildForecast(
     hourlyWeather: hourly,
@@ -130,5 +138,6 @@ final peakForecastProvider = FutureProvider.family<DemandForecast, ForecastRange
     historicalDemandThrough: historicalDemandThrough,
     historicalDemandWarning: historicalDemandWarning,
     weatherRetrievedAt: weatherRetrievedAt,
+    now: NovaScotiaTime.now(),
   );
 });

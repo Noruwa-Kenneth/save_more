@@ -1,3 +1,5 @@
+import '../services/nova_scotia_time.dart';
+
 class WeatherData {
   final double temperature;
   final double apparentTemperature;
@@ -19,7 +21,8 @@ class WeatherData {
       apparentTemperature:
           (current['apparent_temperature'] as num).toDouble(),
       weatherCode: current['weather_code'] as int,
-      time: DateTime.parse(current['time']),
+      time: NovaScotiaTime.parseLocal(current['time'] as String),
     );
   }
 }
+

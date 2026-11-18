@@ -1,4 +1,5 @@
 import 'peak_prediction.dart';
+import '../services/nova_scotia_time.dart';
 
 /// One point on the demand forecast chart.
 class DemandForecastPoint {
@@ -65,7 +66,7 @@ class DemandForecast {
   String _historicalDateNote(DateTime through) {
     final date =
         '${_monthAbbreviation(through.month)} ${through.day}, ${through.year}';
-    final age = DateTime.now().difference(through).inDays;
+    final age = NovaScotiaTime.now().difference(through).inDays;
     final freshness = age > 365
         ? ' This profile is over a year old.'
         : age > 45
@@ -80,7 +81,7 @@ class DemandForecast {
     final retrievedAt = weatherRetrievedAt;
     final weatherNote = retrievedAt == null
         ? 'Weather forecast retrieval time is unavailable.'
-        : DateTime.now().difference(retrievedAt).inHours >= 6
+        : NovaScotiaTime.now().difference(retrievedAt).inHours >= 6
         ? 'Weather forecast was last retrieved over 6 hours ago; refresh it '
               'before relying on these estimates.'
         : 'Weather forecast retrieved at ${_formatClockTime(retrievedAt)}.';
@@ -164,12 +165,12 @@ class DemandForecast {
     switch (range) {
       case ForecastRange.today:
         return _formatFullDate(
-          points.isEmpty ? DateTime.now() : points.first.time,
+          points.isEmpty ? NovaScotiaTime.now() : points.first.time,
         );
       case ForecastRange.tomorrow:
         return _formatFullDate(
           points.isEmpty
-              ? DateTime.now().add(const Duration(days: 1))
+              ? NovaScotiaTime.calendarDay(NovaScotiaTime.now(), 1)
               : points.first.time,
         );
       case ForecastRange.next7Days:

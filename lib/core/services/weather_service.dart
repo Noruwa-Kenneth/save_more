@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../models/weather_data.dart';
+import 'nova_scotia_time.dart';
 
 class WeatherService {
   final Dio _dio;
@@ -27,7 +28,7 @@ class WeatherService {
           'latitude': latitude,
           'longitude': longitude,
           'current': 'temperature_2m,apparent_temperature,weather_code',
-          'timezone': 'auto',
+          'timezone': NovaScotiaTime.zoneName,
         },
       );
 
@@ -53,7 +54,7 @@ class WeatherService {
           'longitude': longitude,
           'hourly': 'temperature_2m,apparent_temperature,weather_code',
           'forecast_days': forecastDays,
-          'timezone': 'auto',
+          'timezone': NovaScotiaTime.zoneName,
         },
       );
 
@@ -85,7 +86,7 @@ class WeatherService {
             !temperature.isFinite) {
           continue;
         }
-        final time = DateTime.tryParse(times[i] as String);
+        final time = NovaScotiaTime.parseLocal(times[i] as String);
         if (time == null) continue;
 
         final apparentTemperature =

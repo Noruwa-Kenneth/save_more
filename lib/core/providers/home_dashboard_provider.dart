@@ -7,6 +7,7 @@ import '../models/energy_recommendation.dart';
 import '../models/peak_prediction.dart';
 import '../models/user_rate_plan.dart';
 import '../services/grid_demand_profile_service.dart';
+import '../services/nova_scotia_time.dart';
 import '../services/peak_prediction_service.dart';
 import '../services/rate_schedule_service.dart';
 import '../services/recommendation_service.dart';
@@ -102,7 +103,7 @@ final homeDashboardProvider = FutureProvider<HomeDashboardData>((ref) async {
 
   final currentRate = rateScheduleService.getCurrentPeriod(
     rate: electricityRate,
-    dateTime: DateTime.now(),
+    dateTime: NovaScotiaTime.now(),
   );
 
   final recommendedTimeRange = todayForecast.recommendedTimeRange;

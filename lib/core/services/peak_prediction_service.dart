@@ -5,6 +5,7 @@ import '../models/peak_prediction.dart';
 import '../models/weather_data.dart';
 import 'grid_demand_profile_service.dart';
 import 'rate_schedule_service.dart';
+import 'nova_scotia_time.dart';
 
 class PeakPredictionService {
   static const _gridDemandProfileService = GridDemandProfileService();
@@ -71,7 +72,7 @@ class PeakPredictionService {
     DateTime? weatherRetrievedAt,
     DateTime? now,
   }) {
-    final reference = now ?? DateTime.now();
+    final reference = now ?? NovaScotiaTime.now();
     final filtered = _filterForRange(hourlyWeather, range, reference);
     final historicalProfile = historicalGridDemand.isEmpty
         ? null
@@ -264,14 +265,10 @@ class PeakPredictionService {
     ForecastRange range,
     DateTime reference,
   ) {
-    final startOfToday = DateTime(
-      reference.year,
-      reference.month,
-      reference.day,
-    );
-    final startOfTomorrow = startOfToday.add(const Duration(days: 1));
-    final startOfDayAfter = startOfToday.add(const Duration(days: 2));
-    final endOfWeek = startOfToday.add(const Duration(days: 7));
+    final startOfToday = NovaScotiaTime.calendarDay(reference, 0);
+    final startOfTomorrow = NovaScotiaTime.calendarDay(reference, 1);
+    final startOfDayAfter = NovaScotiaTime.calendarDay(reference, 2);
+    final endOfWeek = NovaScotiaTime.calendarDay(reference, 7);
 
     switch (range) {
       case ForecastRange.today:
@@ -303,7 +300,7 @@ class PeakPredictionService {
   /// Returns (start, end, peakScore) for the highest-scoring 3-hour block.
   (DateTime, DateTime, int) _findPeakWindow(List<DemandForecastPoint> points) {
     if (points.isEmpty) {
-      final now = DateTime.now();
+      final now = NovaScotiaTime.now();
       return (now, now.add(const Duration(hours: 1)), 20);
     }
 

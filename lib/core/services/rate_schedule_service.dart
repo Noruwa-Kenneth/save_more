@@ -1,4 +1,5 @@
 import '../models/electricity_rate.dart';
+import 'nova_scotia_time.dart';
 
 class RateScheduleService {
   const RateScheduleService();
@@ -7,7 +8,7 @@ class RateScheduleService {
     required ElectricityRate rate,
     DateTime? dateTime,
   }) {
-    final now = dateTime ?? DateTime.now();
+    final now = dateTime ?? NovaScotiaTime.now();
 
     // Standard Residential / flat rate.
     if (rate.rateType == RateType.flat) {
@@ -199,7 +200,7 @@ class RateScheduleService {
     required ElectricityRate rate,
     DateTime? dateTime,
   }) {
-    final now = dateTime ?? DateTime.now();
+    final now = dateTime ?? NovaScotiaTime.now();
 
     // Standard Residential has a flat rate.
     if (rate.rateType == RateType.flat) {

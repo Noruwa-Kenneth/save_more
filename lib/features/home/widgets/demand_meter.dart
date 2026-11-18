@@ -4,14 +4,12 @@ import 'package:save_more/theme.dart';
 class DemandMeter extends StatelessWidget {
   final double percentage;
   final String statusText;
-  final String labelText;
   final VoidCallback? onTap;
 
   const DemandMeter({
     super.key,
     required this.percentage,
     required this.statusText,
-    required this.labelText,
     this.onTap,
   });
 
@@ -65,17 +63,6 @@ class DemandMeter extends StatelessWidget {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: demandColor,
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    Text(
-                      labelText,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textMuted,
                       ),
                     ),
 
